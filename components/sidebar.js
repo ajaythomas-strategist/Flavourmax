@@ -63,6 +63,15 @@ const NAV_ITEMS = [
   },
 ];
 
+// ─── Bottom nav items (primary 4 + menu) ────────────────────
+const BOTTOM_NAV = [
+  { icon: '▦',  label: 'Dashboard',  route: 'dashboard',             perm: 'dashboard' },
+  { icon: '🏭', label: 'Inventory',  route: 'inventory/current-stock', perm: 'inventory_view' },
+  { icon: '⚗',  label: 'Production', route: 'production/batch-list',  perm: 'production_view' },
+  { icon: '🚚', label: 'Dispatch',   route: 'dispatch/dispatch-list', perm: 'dispatch_view' },
+  { icon: '☰',  label: 'More',       route: null,                     perm: 'dashboard' },
+];
+
 export function initSidebar(onNavigate) {
   const sidebar = document.getElementById('fm-sidebar');
   if (!sidebar) return;
@@ -90,7 +99,7 @@ export function initSidebar(onNavigate) {
     </div>
   `;
 
-  // Toggle collapse
+  // Toggle collapse (desktop only)
   const toggleBtn = document.getElementById('sidebar-toggle');
   toggleBtn?.addEventListener('click', () => {
     document.body.classList.toggle('sidebar--collapsed');
@@ -108,18 +117,95 @@ export function initSidebar(onNavigate) {
   // Mobile hamburger
   const hamburger = document.getElementById('fm-hamburger');
   hamburger?.addEventListener('click', () => {
-    document.body.classList.toggle('sidebar--open');
+    const isOpen = document.body.classList.toggle('sidebar--open');
+    hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    hamburger.innerHTML = isOpen ? '✕' : '☰';
   });
 
   // Close on overlay click (mobile)
   document.getElementById('fm-overlay')?.addEventListener('click', () => {
-    document.body.classList.remove('sidebar--open');
+    closeMobileSidebar();
+  });
+
+  // Swipe-to-close gesture on sidebar
+  _initSwipeClose(sidebar);
+
+  // Close sidebar when any nav link is clicked on mobile
+  sidebar.addEventListener('click', e => {
+    if (e.target.closest('[data-route]') && window.innerWidth <= 768) {
+      closeMobileSidebar();
+    }
   });
 
   // Logout
   document.getElementById('sidebar-logout')?.addEventListener('click', () => {
     logout();
     window.location.reload();
+  });
+
+  // Inject bottom nav bar (mobile only)
+  _initBottomNav();
+}
+
+function closeMobileSidebar() {
+  document.body.classList.remove('sidebar--open');
+  const hamburger = document.getElementById('fm-hamburger');
+  if (hamburger) {
+    hamburger.setAttribute('aria-expanded', 'false');
+    hamburger.innerHTML = '☰';
+  }
+}
+
+function _initSwipeClose(sidebar) {
+  let startX = 0, startY = 0;
+  sidebar.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  sidebar.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = Math.abs(e.changedTouches[0].clientY - startY);
+    if (dx < -50 && dy < 60) closeMobileSidebar(); // swipe left
+  }, { passive: true });
+}
+
+function _initBottomNav() {
+  if (document.getElementById('fm-bottom-nav')) return; // already injected
+
+  const user = getCurrentUser();
+  const items = BOTTOM_NAV.filter(i => hasPermission(i.perm));
+  if (items.length === 0) return;
+
+  const nav = document.createElement('nav');
+  nav.id = 'fm-bottom-nav';
+  nav.className = 'fm-bottom-nav';
+  nav.setAttribute('aria-label', 'Quick navigation');
+
+  nav.innerHTML = items.map(item => `
+    <button
+      class="fm-bottom-nav__item"
+      data-bnav-route="${item.route || ''}"
+      aria-label="${escHtml(item.label)}"
+    >
+      <span class="fm-bottom-nav__icon">${item.icon}</span>
+      <span class="fm-bottom-nav__label">${escHtml(item.label)}</span>
+    </button>
+  `).join('');
+
+  document.body.appendChild(nav);
+
+  nav.addEventListener('click', e => {
+    const btn = e.target.closest('[data-bnav-route]');
+    if (!btn) return;
+    const route = btn.dataset.bnavRoute;
+    if (!route) {
+      // "More" → open sidebar
+      document.body.classList.add('sidebar--open');
+      const hamburger = document.getElementById('fm-hamburger');
+      if (hamburger) { hamburger.setAttribute('aria-expanded', 'true'); hamburger.innerHTML = '✕'; }
+    } else {
+      window.location.hash = '#' + route;
+    }
   });
 }
 
@@ -155,6 +241,7 @@ function buildNavItems(onNavigate) {
 }
 
 export function setActiveRoute(route) {
+  // Sidebar links
   document.querySelectorAll('.sidebar__link').forEach(link => {
     const isActive = link.dataset.route === route;
     link.classList.toggle('sidebar__link--active', isActive);
@@ -162,6 +249,15 @@ export function setActiveRoute(route) {
       const group = link.closest('details');
       if (group) group.open = true;
     }
+  });
+
+  // Bottom nav highlight
+  document.querySelectorAll('.fm-bottom-nav__item').forEach(btn => {
+    const r = btn.dataset.bnavRoute;
+    // Exact match OR section match (e.g. inventory/* → inventory nav item)
+    const section = route.split('/')[0];
+    const isActive = r && (r === route || r.startsWith(section + '/'));
+    btn.classList.toggle('fm-bottom-nav__item--active', isActive);
   });
 }
 

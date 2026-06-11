@@ -48,18 +48,47 @@ function _showOfflineToast() {
   }));
 }
 
+// ─── Fetch with timeout ────────────────────────────────────────
+const FETCH_TIMEOUT_MS  = 30_000; // 30 s — Apps Script cold start can take ~20 s
+const FETCH_RETRY_DELAY = 2_000;  // wait 2 s before retry
+
+async function _fetchWithTimeout(input, init = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, { ...init, signal: ctrl.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      const e = new Error('Request timed out — the backend is still waking up. Retrying…');
+      e.isTimeout = true;
+      throw e;
+    }
+    throw err;
+  }
+}
+
 // ─── Web App Request (Apps Script backend) ────────────────────
-async function webAppGet(params = {}) {
+async function _doWebAppGet(params, attempt = 1) {
   const url  = getWebAppUrl();
   const qs   = new URLSearchParams(params).toString();
   const full = `${url}?${qs}`;
   let res;
   try {
-    res = await fetch(full, { redirect: 'follow' });
-  } catch (networkErr) {
+    res = await _fetchWithTimeout(full, { redirect: 'follow' });
+  } catch (err) {
+    if (err.isTimeout && attempt === 1) {
+      // Auto-retry once — cold start may have finished by now
+      await new Promise(r => setTimeout(r, FETCH_RETRY_DELAY));
+      return _doWebAppGet(params, 2);
+    }
     _webAppOk = false;
     _showOfflineToast();
-    throw new Error('Google Sheets unreachable (network error). Check your Apps Script deployment.');
+    throw new Error(err.isTimeout
+      ? 'Backend timed out after retrying. Check your internet connection or reload the page.'
+      : 'Google Sheets unreachable (network error). Check your Apps Script deployment.');
   }
   if (!res.ok) {
     _webAppOk = false;
@@ -79,29 +108,38 @@ async function webAppGet(params = {}) {
     throw new Error('Web App returned invalid JSON — save + redeploy the Apps Script.');
   }
   if (data.error) {
-    // Script ran but returned an app-level error — still mark as connected
     _webAppOk = true;
     throw new Error(data.error);
   }
   _webAppOk = true;
-  _offlineToastShown = false; // reset so reconnect shows fresh state
+  _offlineToastShown = false;
   return data;
 }
 
-async function webAppPost(body = {}) {
+async function webAppGet(params = {}) {
+  return _doWebAppGet(params, 1);
+}
+
+async function _doWebAppPost(body, attempt = 1) {
   const url = getWebAppUrl();
   let res;
   try {
-    res = await fetch(url, {
+    res = await _fetchWithTimeout(url, {
       method:  'POST',
       headers: { 'Content-Type': 'text/plain' },
       body:    JSON.stringify(body),
       redirect: 'follow',
     });
-  } catch (networkErr) {
+  } catch (err) {
+    if (err.isTimeout && attempt === 1) {
+      await new Promise(r => setTimeout(r, FETCH_RETRY_DELAY));
+      return _doWebAppPost(body, 2);
+    }
     _webAppOk = false;
     _showOfflineToast();
-    throw new Error('Google Sheets unreachable (network error). Check your Apps Script deployment.');
+    throw new Error(err.isTimeout
+      ? 'Backend timed out after retrying. Reload the page to try again.'
+      : 'Google Sheets unreachable (network error). Check your Apps Script deployment.');
   }
   if (!res.ok) {
     _webAppOk = false;
@@ -126,6 +164,10 @@ async function webAppPost(body = {}) {
   }
   _webAppOk = true;
   return data;
+}
+
+async function webAppPost(body = {}) {
+  return _doWebAppPost(body, 1);
 }
 
 // ─── Google Sheets REST API (fallback) ────────────────────────

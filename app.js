@@ -41,6 +41,20 @@ export function navigate(route) {
   window.location.hash = '#' + route;
 }
 
+// ─── Loading State Helper ─────────────────────────────────────
+function _showPageLoading(msg = 'Loading…', slow = false) {
+  const el = document.getElementById('fm-main');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="page-loading">
+      <div class="spinner"></div>
+      <p style="margin-top:.5rem">${escHtml(msg)}</p>
+      ${slow ? `<p style="font-size:.75rem;color:var(--color-text-muted);margin-top:.25rem">
+        Google Apps Script takes a moment to wake up after inactivity.
+      </p>` : ''}
+    </div>`;
+}
+
 // ─── Main Content Renderer ───────────────────────────────────
 const mainEl = () => document.getElementById('fm-main');
 let currentRoute = '';
@@ -58,20 +72,37 @@ async function renderRoute(hash) {
     return;
   }
 
-  // Show loading state
-  mainEl().innerHTML = `<div class="page-loading"><div class="spinner"></div><p>Loading…</p></div>`;
   setActiveRoute(route);
   currentRoute = route;
-  document.body.classList.remove('sidebar--open'); // close mobile drawer
+  // Close mobile drawer and reset hamburger icon
+  document.body.classList.remove('sidebar--open');
+  const hbg = document.getElementById('fm-hamburger');
+  if (hbg) { hbg.setAttribute('aria-expanded', 'false'); hbg.innerHTML = '☰'; }
+
+  // Show loading state with progressive feedback
+  _showPageLoading('Loading…');
+  const slowTimer  = setTimeout(() => _showPageLoading('Waking up backend… please wait', true), 4_000);
+  const stuckTimer = setTimeout(() => _showPageLoading('Still connecting… this can take up to 30 seconds on first load', true), 15_000);
 
   try {
     const renderFn = await loader();
+    clearTimeout(slowTimer); clearTimeout(stuckTimer);
     mainEl().innerHTML = '';
     await renderFn(mainEl(), params);
   } catch (err) {
+    clearTimeout(slowTimer); clearTimeout(stuckTimer);
     console.error('Route error:', err);
-    mainEl().innerHTML = `<div class="page-error"><h2>Something went wrong</h2><p>${escHtml(err.message)}</p><button class="btn btn--primary" onclick="location.reload()">Reload</button></div>`;
-    toast.error('Page error: ' + err.message);
+    mainEl().innerHTML = `
+      <div class="page-error">
+        <div style="font-size:2.5rem;margin-bottom:1rem">⚠️</div>
+        <h2 style="margin-bottom:.5rem">Page failed to load</h2>
+        <p style="margin-bottom:1.5rem;color:var(--color-text-muted);max-width:400px;margin-left:auto;margin-right:auto">${escHtml(err.message)}</p>
+        <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn--primary" onclick="window.location.reload()">🔄 Reload Page</button>
+          <button class="btn btn--ghost" onclick="window.location.hash='#dashboard'">Go to Dashboard</button>
+        </div>
+      </div>`;
+    toast.error(err.message);
   }
 }
 
@@ -105,7 +136,8 @@ function bindLoginForm() {
       await loginWithPassword(email, password);
       hideLogin();
       initSidebar(navigate);
-      await loadDimCache();
+      btn.disabled = true; btn.textContent = 'Loading data…';
+      try { await loadDimCache(); } catch (e) { console.warn('Cache load failed:', e.message); }
       navigate('dashboard');
     } catch (ex) {
       if (err) err.textContent = ex.message;
@@ -136,10 +168,20 @@ async function bootstrap() {
   if (user) {
     hideLogin();
     initSidebar(navigate);
-    await Promise.all([
-      loadDimCache().catch(e => console.warn('Cache load failed:', e.message)),
-      renderRoute(window.location.hash || '#dashboard'),
-    ]);
+
+    // Show loading indicator while dim cache warms up
+    _showPageLoading('Connecting to backend…');
+    const warmupTimer = setTimeout(() => _showPageLoading('Waking up backend… this may take a moment on first load', true), 4_000);
+
+    try {
+      await loadDimCache();
+    } catch (e) {
+      console.warn('Cache load failed:', e.message);
+    } finally {
+      clearTimeout(warmupTimer);
+    }
+
+    await renderRoute(window.location.hash || '#dashboard');
   } else {
     showLogin();
     bindLoginForm();

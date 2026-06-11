@@ -998,6 +998,346 @@ body.sidebar--open #fm-overlay { display: block; }
   .page-header { flex-direction: column; align-items: flex-start; }
 }
 
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  MOBILE UX OVERHAUL  —  Touch-first, 44px targets, iOS safe ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+/* ── iOS safe-area support ─────────────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  #fm-main    { padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom)); }
+  .fm-bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ── Bottom Navigation Bar ─────────────────────────────────── */
+.fm-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* ── Layout: push main up so bottom nav doesn't overlap ─── */
+  #fm-app {
+    grid-template-rows: var(--header-height) 1fr;
+    padding-bottom: 64px; /* bottom nav height */
+  }
+
+  /* ── Topbar: centred title, larger hamburger ─────────────── */
+  #fm-topbar {
+    padding: 0 var(--space-3);
+    position: relative;           /* needed for absolute title */
+  }
+
+  #fm-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.35rem;
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+    z-index: 1;
+  }
+
+  .topbar__title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 120px);
+  }
+
+  /* ── Touch targets: 44px minimum ────────────────────────── */
+  .btn {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-5);
+  }
+  .btn--sm {
+    min-height: 38px;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+  }
+  .btn--xs {
+    min-height: 36px;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-xs);
+  }
+  .btn--lg {
+    min-height: 52px;
+    padding: var(--space-4) var(--space-8);
+  }
+
+  /* ── Inputs: 16px prevents iOS auto-zoom, taller hit area ─ */
+  input, select, textarea {
+    font-size: 16px !important;   /* MUST be ≥16px to block iOS zoom */
+    min-height: 44px;
+    padding: var(--space-3) var(--space-3);
+    border-radius: var(--radius-md);
+  }
+  textarea { min-height: 88px; }
+  .input--sm { min-height: 36px; font-size: 14px !important; }
+
+  /* Better tap highlight for selects on iOS */
+  select { -webkit-appearance: none; appearance: none; }
+
+  /* ── Sidebar: close button + swipe indicator ─────────────── */
+  #fm-sidebar {
+    width: min(var(--sidebar-width), 85vw);
+  }
+
+  /* X icon replaces ◀ in toggle when open */
+  body.sidebar--open #sidebar-toggle { display: none; }
+
+  /* ── Labels: larger for readability ─────────────────────── */
+  label {
+    font-size: var(--font-size-sm);
+    margin-bottom: 2px;
+  }
+
+  /* ── Cards: tighter padding on mobile ───────────────────── */
+  .card__body { padding: var(--space-4); }
+  .card__header { padding: var(--space-3) var(--space-4); }
+
+  /* ── Page header: stack on mobile ───────────────────────── */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  .page-title { font-size: var(--font-size-xl); }
+
+  /* ── Page main: tighter padding ─────────────────────────── */
+  #fm-main { padding: var(--space-3); }
+
+  /* ── DataTable: better mobile experience ────────────────── */
+  .dt-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+  .dt-search { max-width: 100%; }
+  .dt-toolbar__right {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .dt-toolbar__right .btn { flex: 1; min-width: 120px; justify-content: center; }
+
+  /* Scroll wrap: visual cue */
+  .dt-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+  }
+  .dt-scroll-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 32px; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.85));
+    pointer-events: none;
+  }
+
+  /* Table cells: larger tap targets */
+  .dt__td, .dt__th {
+    padding: var(--space-3) var(--space-3);
+    font-size: var(--font-size-xs);
+  }
+  .dt__td--actions { white-space: nowrap; }
+
+  /* Pagination: stack */
+  .dt-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    text-align: center;
+  }
+  .dt-pg__buttons .btn { min-width: 80px; }
+
+  /* ── Modals: bottom-sheet on mobile ─────────────────────── */
+  dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh;
+    margin: auto auto 0 auto;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    animation: sheetUp var(--transition-slow) ease;
+  }
+
+  @keyframes sheetUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fm-modal__header {
+    padding: var(--space-4) var(--space-4);
+    position: sticky;
+    top: 0;
+    background: var(--color-bg-card);
+    z-index: 2;
+  }
+
+  /* Sheet handle */
+  .fm-modal__header::before {
+    content: '';
+    display: block;
+    width: 40px; height: 4px;
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+    margin: 0 auto var(--space-3);
+  }
+
+  .fm-modal__body { padding: var(--space-4); gap: var(--space-3); }
+  .fm-modal__footer {
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    position: sticky;
+    bottom: 0;
+    background: var(--color-surface);
+  }
+  .fm-modal__footer .btn { width: 100%; justify-content: center; }
+
+  /* ── Form grids: always single column on mobile ────────── */
+  .form-grid { grid-template-columns: 1fr !important; }
+  .form-group--row { flex-direction: column; }
+  .process-form { grid-template-columns: 1fr !important; }
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-bar .form-group { min-width: 0; flex: auto; }
+  .filter-bar .btn { min-width: 0; }
+
+  /* ── Card header actions: wrap & grow on mobile ─────────── */
+  .card__header { flex-wrap: wrap; }
+  .card__header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .card__header-actions .btn { flex: 1; min-width: 120px; justify-content: center; }
+
+  /* ── Toasts: top on mobile (avoids browser chrome) ──────── */
+  #fm-toast-host {
+    top: calc(var(--header-height) + var(--space-2));
+    bottom: auto;
+    right: var(--space-3);
+    left: var(--space-3);
+    max-width: 100%;
+  }
+  .fm-toast { transform: translateY(-12px); }
+  .fm-toast--visible { transform: translateY(0); }
+
+  /* ── KPI cards: compact on mobile ──────────────────────── */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-card { padding: var(--space-4); gap: var(--space-3); }
+  .kpi-card__icon { font-size: 1.5rem; }
+  .kpi-card__value { font-size: var(--font-size-xl); }
+
+  /* ── Stepper steps: compact ─────────────────────────────── */
+  .stepper-step__header { padding: var(--space-3) var(--space-4); gap: var(--space-3); }
+  .stepper-step__content { padding: var(--space-4); }
+  .stepper-step__actions { width: 100%; margin-top: var(--space-2); }
+  .stepper-step__actions .btn { flex: 1; justify-content: center; }
+
+  /* ── Process form in batch ──────────────────────────────── */
+  .process-card__body { padding: var(--space-4); }
+  .process-card__header { padding: var(--space-3) var(--space-4); }
+  .batch-info-bar { padding: var(--space-3) var(--space-4); gap: var(--space-3); }
+
+  /* ── Sidebar nav links: larger tap targets ──────────────── */
+  .sidebar__link, .sidebar__group-header {
+    padding: var(--space-4) var(--space-4);
+    min-height: 48px;
+  }
+  .sidebar__link--child { min-height: 44px; }
+
+  /* ── Bottom navigation bar ──────────────────────────────── */
+  .fm-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--color-bg-card);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+    z-index: 11;
+    align-items: stretch;
+  }
+
+  .fm-bottom-nav__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: var(--space-1) var(--space-2);
+    transition: color var(--transition), background var(--transition);
+    border-top: 2px solid transparent;
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .fm-bottom-nav__item:hover,
+  .fm-bottom-nav__item--active {
+    color: var(--color-primary);
+    border-top-color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  .fm-bottom-nav__icon { font-size: 1.3rem; line-height: 1; }
+  .fm-bottom-nav__label { font-size: 10px; line-height: 1; white-space: nowrap; }
+
+  /* ── Tab bar: scrollable on mobile ─────────────────────── */
+  .tab-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  .tab-btn { white-space: nowrap; padding: var(--space-3) var(--space-4); }
+
+  /* ── Recipe selector ────────────────────────────────────── */
+  .recipe-selector { flex-direction: column; align-items: stretch; }
+  .recipe-selector__actions { flex-direction: row; }
+
+  /* ── Summary pills: wrap ────────────────────────────────── */
+  .summary-pills { gap: var(--space-2); }
+
+  /* ── Login card: reduce padding on small screens ────────── */
+  .login-card { padding: var(--space-6); border-radius: var(--radius-lg); }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+
+  .page-title { font-size: var(--font-size-lg); }
+
+  /* Single column KPI on very small phones */
+  @media (max-width: 360px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Table action column: icon-only on tiny screens */
+  .dt__td--actions .btn span:not(.btn-icon) { display: none; }
+
+  /* Wider sidebar on small phones */
+  #fm-sidebar { width: 88vw; }
+}
+
 /* ─── Process Stepper Pipeline ─────────────────────────────── */
 .process-stepper {
   display: flex;
