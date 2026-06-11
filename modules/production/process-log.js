@@ -76,7 +76,9 @@ export async function renderProcessLog(container, params = {}) {
   const canEdit = hasPermission('production_edit') && batch.status !== BATCH_STATUS.COMPLETED && batch.status !== BATCH_STATUS.CANCELLED;
 
   // ── Status Bar ────────────────────────────────────────────
-  document.getElementById('batch-status-bar').innerHTML = `
+  const statusBarEl = container.querySelector('#batch-status-bar');
+  if (!statusBarEl) return; // navigated away during fetch
+  statusBarEl.innerHTML = `
     <div class="batch-info-bar">
       <div class="batch-info-item"><span class="label">Product</span><span>${escHtml(product?.product_name || batch.product_id)}</span></div>
       <div class="batch-info-item"><span class="label">Company</span><span>${escHtml(company?.company_name || batch.company_id)}</span></div>

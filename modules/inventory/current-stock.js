@@ -22,6 +22,10 @@ export async function renderCurrentStock(container) {
   async function loadStock() {
     try {
       const batchData = await sheetsBatchRead([`${SHEETS.INVENTORY_BALANCE}!A:F`, `${SHEETS.INGREDIENTS}!A:H`, `${SHEETS.UNITS}!A:E`]);
+
+      // Bail out if user navigated away during the fetch
+      if (!document.body.contains(container)) return;
+
       const balances    = parseSheetRows(SHEETS.INVENTORY_BALANCE, batchData[0].values || []);
       const ingredients = parseSheetRows(SHEETS.INGREDIENTS, batchData[1].values || []);
       const units       = parseSheetRows(SHEETS.UNITS, batchData[2].values || []);
@@ -48,14 +52,17 @@ export async function renderCurrentStock(container) {
       const lowCount  = enriched.filter(e => e.is_low).length;
       const totalItems = enriched.length;
 
-      document.getElementById('stock-summary').innerHTML = `
+      const summaryEl = container.querySelector('#stock-summary');
+      if (summaryEl) summaryEl.innerHTML = `
         <div class="stock-kpis">
           <div class="kpi-card kpi--blue"><div class="kpi-card__icon">📦</div><div class="kpi-card__body"><div class="kpi-card__value">${totalItems}</div><div class="kpi-card__label">Total Ingredients</div></div></div>
           <div class="kpi-card ${lowCount > 0 ? 'kpi--red' : 'kpi--green'}"><div class="kpi-card__icon">⚠</div><div class="kpi-card__body"><div class="kpi-card__value">${lowCount}</div><div class="kpi-card__label">Low Stock Alerts</div></div></div>
         </div>
       `;
 
-      new DataTable(document.getElementById('stock-table'), {
+      const tableEl = container.querySelector('#stock-table');
+      if (!tableEl) return;
+      new DataTable(tableEl, {
         columns: [
           { key: 'ingredient_name', label: 'Ingredient',    sortable: true },
           { key: 'category',        label: 'Category' },

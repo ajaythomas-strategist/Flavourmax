@@ -58,8 +58,11 @@ function _showPageLoading(msg = 'Loading…', slow = false) {
 // ─── Main Content Renderer ───────────────────────────────────
 const mainEl = () => document.getElementById('fm-main');
 let currentRoute = '';
+let _routeGen = 0; // incremented on every navigation; stale renders bail out early
 
 async function renderRoute(hash) {
+  const gen = ++_routeGen; // capture generation for this navigation
+
   const [routePart, queryPart] = (hash || '').replace(/^#/, '').split('?');
   const route = routePart || 'dashboard';
   const params = Object.fromEntries(new URLSearchParams(queryPart || ''));
@@ -68,7 +71,7 @@ async function renderRoute(hash) {
 
   const loader = ROUTES[route];
   if (!loader) {
-    mainEl().innerHTML = `<div class="page-header"><h1 class="page-title">404 — Page Not Found</h1><p><a href="#dashboard">Go to Dashboard</a></p></div>`;
+    const m = mainEl(); if (m) m.innerHTML = `<div class="page-header"><h1 class="page-title">404 — Page Not Found</h1><p><a href="#dashboard">Go to Dashboard</a></p></div>`;
     return;
   }
 
@@ -81,18 +84,23 @@ async function renderRoute(hash) {
 
   // Show loading state with progressive feedback
   _showPageLoading('Loading…');
-  const slowTimer  = setTimeout(() => _showPageLoading('Waking up backend… please wait', true), 4_000);
-  const stuckTimer = setTimeout(() => _showPageLoading('Still connecting… this can take up to 30 seconds on first load', true), 15_000);
+  const slowTimer  = setTimeout(() => { if (gen === _routeGen) _showPageLoading('Waking up backend… please wait', true); }, 4_000);
+  const stuckTimer = setTimeout(() => { if (gen === _routeGen) _showPageLoading('Still connecting… this can take up to 30 seconds on first load', true); }, 15_000);
 
   try {
     const renderFn = await loader();
     clearTimeout(slowTimer); clearTimeout(stuckTimer);
-    mainEl().innerHTML = '';
-    await renderFn(mainEl(), params);
+    // If user navigated away while the module was loading, bail out silently
+    if (gen !== _routeGen) return;
+    const m = mainEl(); if (!m) return;
+    m.innerHTML = '';
+    await renderFn(m, params);
   } catch (err) {
     clearTimeout(slowTimer); clearTimeout(stuckTimer);
+    if (gen !== _routeGen) return; // stale error — new page already rendered
     console.error('Route error:', err);
-    mainEl().innerHTML = `
+    const m = mainEl(); if (!m) return;
+    m.innerHTML = `
       <div class="page-error">
         <div style="font-size:2.5rem;margin-bottom:1rem">⚠️</div>
         <h2 style="margin-bottom:.5rem">Page failed to load</h2>

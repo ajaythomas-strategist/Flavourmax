@@ -36,6 +36,10 @@ export async function renderDashboard(container) {
     </div>
   `;
 
+  // Helper: safely set innerHTML on a container-scoped element
+  const $ = (sel) => container.querySelector(sel);
+  const setHtml = (sel, html) => { const el = $(sel); if (el) el.innerHTML = html; };
+
   try {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -74,22 +78,25 @@ export async function renderDashboard(container) {
       return parseFloat(b.current_balance || 0) < parseFloat(ing.min_stock_alert || 0);
     });
 
+    // Bail out if user navigated away during the fetch
+    if (!document.body.contains(container)) return;
+
     // ── Render KPI cards ──────────────────────────────────────
-    document.getElementById('kpi-grid').innerHTML = `
+    setHtml('#kpi-grid', `
       ${kpiCard('⚗', 'Active Batches',       activeBatches.length,    'in progress now',      'kpi--blue',  '#production/batch-list')}
       ${kpiCard('✅', 'Completed This Month', completedBatches,        'batches finished',     'kpi--green')}
       ${kpiCard('⚠', 'Low Stock Alerts',     lowStockItems.length,    'items below threshold', lowStockItems.length > 0 ? 'kpi--red' : 'kpi--green', '#inventory/current-stock')}
       ${kpiCard('🚚', 'Pending Dispatches',   pendingDispatches,       'awaiting delivery',    pendingDispatches > 0 ? 'kpi--amber' : 'kpi--green', '#dispatch/dispatch-list')}
       ${kpiCard('📦', 'Dispatched This Month',dispatchedThisMonth,     'consignments sent',    'kpi--blue')}
       ${kpiCard('✏', 'Pending Corrections',  pendingCorrections,      'awaiting approval',    pendingCorrections > 0 ? 'kpi--red' : 'kpi--green', '#corrections/inbox')}
-    `;
+    `);
 
     // ── Recent Batches ────────────────────────────────────────
     const recentBatches = [...batches]
       .sort((a, b) => (b.batch_date || '').localeCompare(a.batch_date || ''))
       .slice(0, 6);
 
-    document.querySelector('#dash-recent-batches .card__body').innerHTML =
+    setHtml('#dash-recent-batches .card__body',
       recentBatches.length === 0
         ? '<p class="empty-msg">No batches recorded yet.</p>'
         : `<ul class="info-list">${recentBatches.map(b => {
@@ -109,10 +116,11 @@ export async function renderDashboard(container) {
                 <small style="font-size:0.7rem;color:var(--color-text-muted);white-space:nowrap">${done}/${total} steps</small>
               </div>
             </li>`;
-          }).join('')}</ul>`;
+          }).join('')}</ul>`
+    );
 
     // ── Low Stock ─────────────────────────────────────────────
-    document.querySelector('#dash-low-stock .card__body').innerHTML =
+    setHtml('#dash-low-stock .card__body',
       lowStockItems.length === 0
         ? '<p class="empty-msg">All stock levels are healthy ✓</p>'
         : `<ul class="alert-list">${lowStockItems.map(b => {
@@ -121,11 +129,12 @@ export async function renderDashboard(container) {
               <span class="alert-item__name">${escHtml(ing?.ingredient_name || b.ingredient_id)}</span>
               <span class="alert-item__val">Balance: <strong>${fmtNum(b.current_balance)}</strong> (min: ${fmtNum(ing?.min_stock_alert)})</span>
             </li>`;
-          }).join('')}</ul>`;
+          }).join('')}</ul>`
+    );
 
     // ── Pending Corrections ───────────────────────────────────
     const pendingList = corrections.filter(c => c.status === 'Pending').slice(0, 6);
-    document.querySelector('#dash-pending-corrections .card__body').innerHTML =
+    setHtml('#dash-pending-corrections .card__body',
       pendingList.length === 0
         ? '<p class="empty-msg">No pending corrections.</p>'
         : `<ul class="info-list">${pendingList.map(c => `
@@ -140,7 +149,8 @@ export async function renderDashboard(container) {
                 <strong style="color:var(--color-primary)">${escHtml(c.new_value)}</strong>
                 <span class="badge badge--amber" style="margin-left:.25rem">⏳ Pending</span>
               </div>
-            </li>`).join('')}</ul>`;
+            </li>`).join('')}</ul>`
+    );
 
   } catch (err) {
     console.error('[dashboard]', err);
