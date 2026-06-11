@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flavourmax — Database Setup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f4f3;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 40px 48px;
+      max-width: 520px;
+      width: 100%;
+    }
+    .logo { font-size: 2.5rem; text-align: center; margin-bottom: 8px; }
+    h1 { font-size: 1.4rem; color: #1d5c52; text-align: center; margin-bottom: 4px; }
+    .sub { color: #6b7280; font-size: 0.875rem; text-align: center; margin-bottom: 32px; }
+
+    .step {
+      background: #f8fafb;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .step-num {
+      display: inline-block;
+      background: #1d5c52;
+      color: #fff;
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      text-align: center;
+      line-height: 24px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+    .step-title { font-weight: 600; color: #1a202c; font-size: 0.9rem; }
+    .step-desc { color: #6b7280; font-size: 0.8rem; margin-top: 6px; margin-left: 32px; }
+    code {
+      background: #e8f4f3;
+      color: #1d5c52;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .btn-run {
+      width: 100%;
+      padding: 14px;
+      background: #1d5c52;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn-run:hover:not(:disabled) { background: #174a41; }
+    .btn-run:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    #progress {
+      display: none;
+      margin-top: 20px;
+    }
+    .progress-bar-wrap {
+      background: #e2e8f0;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-bar-fill {
+      background: #1d5c52;
+      height: 100%;
+      width: 0%;
+      border-radius: 99px;
+      transition: width 0.4s;
+    }
+    #log {
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      color: #374151;
+      background: #f8fafb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .log-ok { color: #059669; }
+    .log-err { color: #dc2626; }
+    .log-info { color: #6b7280; }
+
+    #result {
+      display: none;
+      text-align: center;
+      padding: 20px 0 0;
+    }
+    .result-icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .result-title { font-size: 1.1rem; font-weight: 600; }
+    .result-sub { color: #6b7280; font-size: 0.85rem; margin-top: 4px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🍃</div>
+  <h1>Flavourmax Database Setup</h1>
+  <p class="sub">Seeds all real master data into Google Sheets in one click</p>
+
+  <div class="step">
+    <span class="step-num">1</span>
+    <span class="step-title">Paste updated script</span>
+    <p class="step-desc">
+      Open your Google Sheet → <strong>Extensions → Apps Script</strong> →
+      paste the full contents of <code>google-sheets-setup.gs</code> → Save.
+    </p>
+  </div>
+
+  <div class="step">
+    <span class="step-num">2</span>
+    <span class="step-title">Deploy as Web App</span>
+    <p class="step-desc">
+      Click <strong>Deploy → Manage Deployments → Edit (pencil)</strong> →
+      change version to <em>New version</em> → Deploy.
+      Keep <em>Execute as: Me</em> and <em>Access: Anyone</em>.
+    </p>
+  </div>
+
+  <div class="step">
+    <span class="step-num">3</span>
+    <span class="step-title">Click Run Setup below</span>
+    <p class="step-desc">
+      This page will call the web app and seed all real data automatically —
+      companies, ingredients, suppliers, warehouses, processes and fields.
+    </p>
+  </div>
+
+  <button class="btn-run" id="btnRun" onclick="runSetup()">
+    🚀 Run Full Setup Now
+  </button>
+
+  <div id="progress">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div id="log"></div>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+  // ── Web App URL ──────────────────────────────────────────────
+  const WEBAPP_URL = localStorage.getItem('fm_webapp_url')
+    || 'https://script.google.com/macros/s/AKfycbx3lfMRH4F3cF-ZZdwEjcseHfhxH4Cunki9RWTw77yutbwhqWIqcIXC7GFh-ukpp9wG2A/exec';
+
+  function log(msg, cls = '') {
+    const el = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = cls;
+    line.textContent = msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setProgress(pct) {
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+
+  async function postAction(action, body = {}) {
+    const res = await fetch(WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...body }),
+      redirect: 'follow'
+    });
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch { return { ok: false, error: text }; }
+  }
+
+  async function runSetup() {
+    const btn = document.getElementById('btnRun');
+    btn.disabled = true;
+    document.getElementById('progress').style.display = 'block';
+    document.getElementById('result').style.display = 'none';
+
+    try {
+      log('⏳ Connecting to Google Sheets backend…', 'log-info');
+      setProgress(10);
+
+      // Step 1: Ping
+      const ping = await postAction('ping');
+      if (!ping.ok) throw new Error('Cannot reach web app. Make sure you redeployed after pasting the new script.');
+      log('✅ Connected to: ' + ping.title, 'log-ok');
+      setProgress(25);
+
+      // Step 2: Full setup (init + clear + seed)
+      log('⏳ Running full setup — clearing old data and seeding real master data…', 'log-info');
+      const setup = await postAction('fullSetup');
+      if (!setup.ok) throw new Error(setup.error || setup.message || 'Setup failed');
+      log('✅ ' + setup.message, 'log-ok');
+      setProgress(90);
+
+      // Step 3: Fix is_active flags
+      const fix = await postAction('fixIsActive');
+      log('✅ is_active fixed on all dim sheets (' + (fix.fixed || 0) + ' rows)', 'log-ok');
+      setProgress(100);
+
+      // Done
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('result').innerHTML = `
+        <div class="result-icon">🎉</div>
+        <div class="result-title" style="color:#059669">Setup Complete!</div>
+        <div class="result-sub">
+          Real master data seeded.<br>
+          Open the app and start using it.
+        </div>
+      `;
+
+    } catch (err) {
+      log('❌ Error: ' + err.message, 'log-err');
+      log('→ Re-deploy the Apps Script (Step 2) and try again.', 'log-info');
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('result').innerHTML = `
+        <div class="result-icon">⚠️</div>
+        <div class="result-title" style="color:#dc2626">Setup Failed</div>
+        <div class="result-sub">${err.message}</div>
+      `;
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

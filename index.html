@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Flavourmax Manufacturing Management System — Inventory, Production, Dispatch, Sales and more for food manufacturing.">
+  <meta name="theme-color" content="#1d5c52">
+  <title>Flavourmax — Manufacturing Management</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Preconnect for Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Design System -->
+  <link rel="stylesheet" href="index.css">
+
+  <!-- Google Identity Services (for OAuth) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- ─── Login Screen ─────────────────────────────────── -->
+  <div id="fm-login" role="main" aria-label="Sign In">
+    <div class="login-card">
+      <div class="login-card__logo">
+        <div class="login-card__icon">🍃</div>
+        <h1 class="login-card__title">Flavourmax</h1>
+        <p class="login-card__sub">Manufacturing Management System</p>
+      </div>
+
+      <p id="login-error" class="login-error" aria-live="assertive"></p>
+
+      <form id="login-form" novalidate>
+        <div class="form-group" style="margin-bottom:1rem">
+          <label for="login-email">Email Address</label>
+          <input
+            type="email"
+            id="login-email"
+            name="email"
+            autocomplete="email"
+            required
+            placeholder="you@flavourmax.in"
+          >
+        </div>
+        <div class="form-group" style="margin-bottom:1.5rem">
+          <label for="login-password">Password</label>
+          <input
+            type="password"
+            id="login-password"
+            name="password"
+            autocomplete="current-password"
+            required
+            placeholder="••••••••"
+          >
+        </div>
+        <button type="submit" class="btn btn--primary" style="width:100%;justify-content:center;padding:0.75rem">
+          Sign In
+        </button>
+      </form>
+
+      <p style="margin-top:1.5rem;text-align:center;font-size:0.75rem;color:var(--color-text-muted)">
+        First time? Ask your Admin to create your account in<br>
+        <strong>Settings → User Management</strong>
+      </p>
+
+    </div>
+  </div>
+
+  <!-- ─── App Shell ─────────────────────────────────────── -->
+  <div id="fm-app" style="display:none" aria-label="Flavourmax App">
+
+    <!-- Mobile overlay -->
+    <div id="fm-overlay" aria-hidden="true"></div>
+
+    <!-- Sidebar -->
+    <aside id="fm-sidebar" aria-label="Main navigation" role="navigation">
+      <!-- Filled by sidebar.js -->
+    </aside>
+
+    <!-- Top Bar -->
+    <header id="fm-topbar" role="banner">
+      <button id="fm-hamburger" aria-label="Open navigation menu" aria-controls="fm-sidebar" aria-expanded="false">
+        ☰
+      </button>
+      <span class="topbar__title" id="fm-breadcrumb" aria-live="polite">Flavourmax</span>
+    </header>
+
+    <!-- Main Content -->
+    <main id="fm-main" role="main" aria-label="Page content" tabindex="-1">
+      <!-- Rendered by route modules -->
+      <div class="page-loading">
+        <div class="spinner"></div>
+        <p>Loading…</p>
+      </div>
+    </main>
+
+  </div><!-- /#fm-app -->
+
+  <!-- ─── App Entry Point ───────────────────────────────── -->
+  <script type="module" src="app.js"></script>
+
+</body>
+</html>

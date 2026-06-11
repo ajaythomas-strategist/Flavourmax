@@ -1,0 +1,26 @@
+{
+  "name": "Flavourmax Manufacturing",
+  "short_name": "Flavourmax",
+  "description": "Manufacturing Management System for Flavourmax — Inventory, Production, Dispatch and Sales",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1d5c52",
+  "theme_color": "#1d5c52",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["business", "productivity"]
+}
