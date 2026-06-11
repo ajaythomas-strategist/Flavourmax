@@ -52,26 +52,29 @@ export async function renderRecipes(container) {
   const ingredients = activeOnly(parseSheetRows(SHEETS.INGREDIENTS, batchData[2].values || []));
   const units       = activeOnly(parseSheetRows(SHEETS.UNITS,       batchData[3].values || []));
 
-  const companySelect  = document.getElementById('recipe-company');
-  const productSelect  = document.getElementById('recipe-product');
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
+  const companySelect  = container.querySelector('#recipe-company');
+  const productSelect  = container.querySelector('#recipe-product');
+  if (!companySelect || !productSelect) return;
   companies.forEach(c => companySelect.insertAdjacentHTML('beforeend', `<option value="${escHtml(c.company_id)}">${escHtml(c.company_name)}</option>`));
   products.forEach(p => productSelect.insertAdjacentHTML('beforeend', `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
 
   let currentCompanyId = '', currentProductId = '';
 
-  document.getElementById('load-recipe-btn')?.addEventListener('click', async () => {
+  container.querySelector('#load-recipe-btn')?.addEventListener('click', async () => {
     currentCompanyId = companySelect.value;
     currentProductId = productSelect.value;
     if (!currentCompanyId || !currentProductId) { toast.info('Please select both company and product.'); return; }
     await loadRecipe(currentCompanyId, currentProductId);
   });
 
-  document.getElementById('add-ingredient-row-btn')?.addEventListener('click', () => {
+  container.querySelector('#add-ingredient-row-btn')?.addEventListener('click', () => {
     if (!currentCompanyId || !currentProductId) return;
     addIngredientRow(currentCompanyId, currentProductId, ingredients, units, () => loadRecipe(currentCompanyId, currentProductId));
   });
 
-  document.getElementById('copy-recipe-btn')?.addEventListener('click', () => {
+  container.querySelector('#copy-recipe-btn')?.addEventListener('click', () => {
     if (!currentCompanyId || !currentProductId) { toast.info('Load a recipe first.'); return; }
     copyRecipeFrom(currentCompanyId, currentProductId, companies, products, ingredients, units);
   });
@@ -79,14 +82,17 @@ export async function renderRecipes(container) {
   async function loadRecipe(companyId, productId) {
     const company = companies.find(c => c.company_id === companyId);
     const product = products.find(p => p.product_id === productId);
-    document.getElementById('recipe-card-title').textContent = `${company?.company_name} — ${product?.product_name}`;
-    document.getElementById('recipe-detail-card').style.display = '';
-    if (canEdit) document.getElementById('copy-recipe-btn').disabled = false;
+    const titleEl = container.querySelector('#recipe-card-title');
+    if (titleEl) titleEl.textContent = `${company?.company_name} — ${product?.product_name}`;
+    const detailCard = container.querySelector('#recipe-detail-card');
+    if (detailCard) detailCard.style.display = '';
+    const copyBtn = container.querySelector('#copy-recipe-btn');
+    if (canEdit && copyBtn) copyBtn.disabled = false;
 
     const allRecipes = await readAllRows(SHEETS.RECIPES);
     const isActive = (r) => r.is_active !== 'FALSE' && r.is_active !== false && r.is_active !== '0';
     const filtered = allRecipes.filter(r => r.company_id === companyId && r.product_id === productId && isActive(r));
-    const detail = document.getElementById('recipe-ingredients');
+    const detail = container.querySelector('#recipe-ingredients');
     if (!detail) return;
 
     if (filtered.length === 0) {

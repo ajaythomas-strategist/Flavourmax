@@ -13,6 +13,7 @@ export async function renderNewSale(container) {
   if (!hasPermission('sales_edit')) { container.innerHTML = '<div class="page-header"><h1>Access Denied</h1></div>'; return; }
 
   const invoiceNo = await generateInvoiceNo();
+  if (!document.body.contains(container)) return; // navigated away before render
 
   container.innerHTML = `
     <div class="page-header">
@@ -78,15 +79,18 @@ export async function renderNewSale(container) {
   `;
 
   const bd = await sheetsBatchRead([`${SHEETS.COMPANIES}!A:J`, `${SHEETS.PRODUCTS}!A:H`, `${SHEETS.PRODUCTION_BATCHES}!A:L`, `${SHEETS.UNITS}!A:E`]);
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
   const companies = activeOnly(parseSheetRows(SHEETS.COMPANIES, bd[0].values || []));
   const products  = activeOnly(parseSheetRows(SHEETS.PRODUCTS, bd[1].values || []));
   const batches   = parseSheetRows(SHEETS.PRODUCTION_BATCHES, bd[2].values || []).filter(b => b.status === 'Completed');
   const units     = activeOnly(parseSheetRows(SHEETS.UNITS, bd[3].values || []));
 
-  const compSel  = document.getElementById('sale-company');
-  const prodSel  = document.getElementById('sale-product');
-  const unitSel  = document.getElementById('sale-unit');
-  const batchSel = document.getElementById('sale-batch');
+  const compSel  = container.querySelector('#sale-company');
+  const prodSel  = container.querySelector('#sale-product');
+  const unitSel  = container.querySelector('#sale-unit');
+  const batchSel = container.querySelector('#sale-batch');
+  if (!compSel || !prodSel || !unitSel || !batchSel) return;
 
   companies.forEach(c => compSel.insertAdjacentHTML('beforeend', `<option value="${escHtml(c.company_id)}">${escHtml(c.company_name)}</option>`));
   products.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
@@ -94,19 +98,22 @@ export async function renderNewSale(container) {
   batches.forEach(b => batchSel.insertAdjacentHTML('beforeend', `<option value="${escHtml(b.batch_id)}">${escHtml(b.batch_id)}</option>`));
 
   function recalc() {
-    const qty  = parseFloat(document.getElementById('sale-qty')?.value || 0);
-    const rate = parseFloat(document.getElementById('sale-rate')?.value || 0);
-    const gst  = parseFloat(document.getElementById('sale-gst')?.value || 0);
+    const qty  = parseFloat(container.querySelector('#sale-qty')?.value || 0);
+    const rate = parseFloat(container.querySelector('#sale-rate')?.value || 0);
+    const gst  = parseFloat(container.querySelector('#sale-gst')?.value || 0);
     const amt  = qty * rate;
     const gstAmt = amt * gst / 100;
-    document.getElementById('calc-amount').textContent = '₹' + fmt(amt);
-    document.getElementById('calc-gst').textContent    = '₹' + fmt(gstAmt);
-    document.getElementById('calc-total').textContent  = '₹' + fmt(amt + gstAmt);
+    const amtEl = container.querySelector('#calc-amount');
+    const gstEl = container.querySelector('#calc-gst');
+    const totEl = container.querySelector('#calc-total');
+    if (amtEl) amtEl.textContent = '₹' + fmt(amt);
+    if (gstEl) gstEl.textContent = '₹' + fmt(gstAmt);
+    if (totEl) totEl.textContent = '₹' + fmt(amt + gstAmt);
   }
 
-  ['sale-qty','sale-rate','sale-gst'].forEach(id => document.getElementById(id)?.addEventListener('input', recalc));
+  ['sale-qty','sale-rate','sale-gst'].forEach(id => container.querySelector(`#${id}`)?.addEventListener('input', recalc));
 
-  document.getElementById('sale-form')?.addEventListener('submit', async (e) => {
+  container.querySelector('#sale-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const qty  = parseFloat(fd.get('quantity') || 0);
@@ -136,6 +143,8 @@ export async function renderSalesList(container) {
   `;
 
   const bd = await sheetsBatchRead([`${SHEETS.SALES}!A:P`, `${SHEETS.COMPANIES}!A:J`, `${SHEETS.PRODUCTS}!A:H`]);
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
   const sales     = parseSheetRows(SHEETS.SALES, bd[0].values || []);
   const companies = parseSheetRows(SHEETS.COMPANIES, bd[1].values || []);
   const products  = parseSheetRows(SHEETS.PRODUCTS, bd[2].values || []);
@@ -145,7 +154,9 @@ export async function renderSalesList(container) {
   const totalSales = sales.reduce((s, r) => s + parseFloat(r.total_amount || 0), 0);
   container.insertAdjacentHTML('beforeend', `<div class="summary-bar"><span>Total Revenue: <strong>₹${fmt(totalSales)}</strong></span></div>`);
 
-  new DataTable(document.getElementById('sales-table'), {
+  const salesTableEl = container.querySelector('#sales-table');
+  if (!salesTableEl) return;
+  new DataTable(salesTableEl, {
     columns: [
       { key: 'sale_id',      label: 'ID' },
       { key: 'invoice_no',   label: 'Invoice' },
@@ -172,17 +183,21 @@ export async function renderSalesReturns(container) {
     <div class="card"><div class="card__body" id="returns-table"></div></div>
   `;
 
-  document.getElementById('new-return-btn')?.addEventListener('click', () => openReturnForm());
+  container.querySelector('#new-return-btn')?.addEventListener('click', () => openReturnForm());
 
   async function loadReturns() {
     const bd = await sheetsBatchRead([`${SHEETS.SALES_RETURN}!A:J`, `${SHEETS.COMPANIES}!A:J`, `${SHEETS.PRODUCTS}!A:H`]);
+    if (!document.body.contains(container)) return; // navigated away during fetch
+
     const returns   = parseSheetRows(SHEETS.SALES_RETURN, bd[0].values || []);
     const companies = parseSheetRows(SHEETS.COMPANIES, bd[1].values || []);
     const products  = parseSheetRows(SHEETS.PRODUCTS, bd[2].values || []);
     const compMap = Object.fromEntries(companies.map(c => [c.company_id, c.company_name]));
     const prodMap = Object.fromEntries(products.map(p => [p.product_id, p.product_name]));
 
-    new DataTable(document.getElementById('returns-table'), {
+    const returnsTableEl = container.querySelector('#returns-table');
+    if (!returnsTableEl) return;
+    new DataTable(returnsTableEl, {
       columns: [
         { key: 'return_id',   label: 'ID' },
         { key: 'return_date', label: 'Date', sortable: true },

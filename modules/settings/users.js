@@ -1,12 +1,12 @@
 // ============================================================
 // modules/settings/users.js — User Management (Admin Only)
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId } from '../../sheets-api.js';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, hardDelete } from '../../sheets-api.js';
 import { SHEETS, ROLES } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
-import { formModal } from '../../components/modal.js';
+import { formModal, confirm } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission } from '../../auth.js';
+import { hasPermission, getCurrentUser } from '../../auth.js';
 
 export async function renderUsers(container) {
   if (!hasPermission('users_manage')) {
@@ -22,11 +22,14 @@ export async function renderUsers(container) {
     <div class="card"><div class="card__body" id="users-table"></div></div>
   `;
 
-  document.getElementById('add-user-btn')?.addEventListener('click', () => openForm(null, refresh));
+  container.querySelector('#add-user-btn')?.addEventListener('click', () => openForm(null, refresh));
 
   async function refresh() {
     const users = await readAllRows(SHEETS.USERS);
-    new DataTable(document.getElementById('users-table'), {
+    if (!document.body.contains(container)) return;
+    const tableEl = container.querySelector('#users-table');
+    if (!tableEl) return;
+    new DataTable(tableEl, {
       columns: [
         { key: 'user_id',   label: 'ID' },
         { key: 'full_name', label: 'Name', sortable: true },
@@ -37,8 +40,9 @@ export async function renderUsers(container) {
       ],
       data: users,
       actions: [
-        { key: 'edit',   label: 'Edit',   icon: '✏', class: 'btn--ghost', handler: (row) => openForm(row, refresh) },
-        { key: 'toggle', label: 'Toggle', icon: '⏻', class: 'btn--ghost', handler: (row) => toggleUser(row, refresh) },
+        { key: 'edit',   label: 'Edit',   icon: '✏', class: 'btn--ghost',  handler: (row) => openForm(row, refresh) },
+        { key: 'toggle', label: 'Toggle', icon: '⏻', class: 'btn--ghost',  handler: (row) => toggleUser(row, refresh) },
+        { key: 'delete', label: 'Delete', icon: '🗑', class: 'btn--danger', handler: (row) => deleteUser(row, refresh) },
       ],
     });
   }
@@ -78,6 +82,25 @@ export async function renderUsers(container) {
       const newStatus = (row.is_active === 'TRUE' || row.is_active === true) ? 'FALSE' : 'TRUE';
       await updateFullRow(SHEETS.USERS, rowNum, { ...row, is_active: newStatus });
       toast.success('User status updated.');
+      await onSave();
+    } catch (err) { toast.error(err.message); }
+  }
+
+  async function deleteUser(row, onSave) {
+    const currentUserId = getCurrentUser()?.user_id;
+    if (row.user_id === currentUserId) {
+      toast.error('You cannot delete your own account.');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Delete User',
+      message: `Permanently delete "${row.full_name}" (${row.email})? This cannot be undone.`,
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await hardDelete(SHEETS.USERS, row.user_id);
+      toast.success(`User "${row.full_name}" deleted.`);
       await onSave();
     } catch (err) { toast.error(err.message); }
   }

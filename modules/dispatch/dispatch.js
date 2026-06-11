@@ -54,15 +54,18 @@ export async function renderNewDispatch(container) {
   `;
 
   const batchData = await sheetsBatchRead([`${SHEETS.COMPANIES}!A:J`, `${SHEETS.PRODUCTS}!A:H`, `${SHEETS.PRODUCTION_BATCHES}!A:L`, `${SHEETS.UNITS}!A:E`]);
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
   const companies = activeOnly(parseSheetRows(SHEETS.COMPANIES, batchData[0].values || []));
   const products  = activeOnly(parseSheetRows(SHEETS.PRODUCTS, batchData[1].values || []));
   const batches   = parseSheetRows(SHEETS.PRODUCTION_BATCHES, batchData[2].values || []).filter(b => b.status === BATCH_STATUS.COMPLETED);
   const units     = activeOnly(parseSheetRows(SHEETS.UNITS, batchData[3].values || []));
 
-  const compSel   = document.getElementById('disp-company');
-  const prodSel   = document.getElementById('disp-product');
-  const batchSel  = document.getElementById('disp-batch');
+  const compSel   = container.querySelector('#disp-company');
+  const prodSel   = container.querySelector('#disp-product');
+  const batchSel  = container.querySelector('#disp-batch');
   const unitSel   = container.querySelector('[name="unit_id"]');
+  if (!compSel || !prodSel || !batchSel) return;
 
   companies.forEach(c => compSel.insertAdjacentHTML('beforeend', `<option value="${escHtml(c.company_id)}">${escHtml(c.company_name)}</option>`));
   products.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
@@ -77,7 +80,7 @@ export async function renderNewDispatch(container) {
   compSel.addEventListener('change', filterBatches);
   prodSel.addEventListener('change', filterBatches);
 
-  document.getElementById('dispatch-form')?.addEventListener('submit', async (e) => {
+  container.querySelector('#dispatch-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     if (!data.company_id || !data.product_id || !data.batch_id || !data.quantity) { toast.warning('Fill all required fields.'); return; }
@@ -107,13 +110,17 @@ export async function renderDispatchList(container) {
   `;
 
   const bd = await _batch([`${SHEETS.DISPATCH}!A:M`, `${SHEETS.COMPANIES}!A:J`, `${SHEETS.PRODUCTS}!A:H`]);
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
   const dispatches = _parse(SHEETS.DISPATCH, bd[0].values || []);
   const companies  = _parse(SHEETS.COMPANIES, bd[1].values || []);
   const products   = _parse(SHEETS.PRODUCTS, bd[2].values || []);
   const compMap = Object.fromEntries(companies.map(c => [c.company_id, c.company_name]));
   const prodMap = Object.fromEntries(products.map(p => [p.product_id, p.product_name]));
 
-  new DataTable(document.getElementById('dispatch-table'), {
+  const dispatchTableEl = container.querySelector('#dispatch-table');
+  if (!dispatchTableEl) return;
+  new DataTable(dispatchTableEl, {
     columns: [
       { key: 'dispatch_id',   label: 'ID' },
       { key: 'dispatch_date', label: 'Date', sortable: true },

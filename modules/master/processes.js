@@ -52,13 +52,16 @@ export async function renderProcesses(container) {
   const products     = activeOnly(parseSheetRows(SHEETS.PRODUCTS,   batchData[0].values || []));
   const prodMap      = Object.fromEntries(products.map(p => [p.product_id, p.product_name]));
 
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
   // Populate product filter
-  const filterSelect = document.getElementById('proc-product-filter');
+  const filterSelect = container.querySelector('#proc-product-filter');
+  if (!filterSelect) return;
   products.forEach(p => filterSelect.insertAdjacentHTML('beforeend',
     `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
 
   if (canEdit) {
-    document.getElementById('add-proc-btn').addEventListener('click', () =>
+    container.querySelector('#add-proc-btn')?.addEventListener('click', () =>
       openProcessForm(null, refreshProcesses, products));
   }
   filterSelect.addEventListener('change', () => {
@@ -69,28 +72,29 @@ export async function renderProcesses(container) {
   // ── Wire field-editor buttons ONCE using onclick (no accumulation) ──
   let selectedProcess = null;
 
-  document.getElementById('close-fields-btn')?.addEventListener('click', closeFieldEditor);
+  container.querySelector('#close-fields-btn')?.addEventListener('click', closeFieldEditor);
 
   function closeFieldEditor() {
-    const card = document.getElementById('field-editor-card');
+    const card = container.querySelector('#field-editor-card');
     if (card) card.style.display = 'none';
     selectedProcess = null;
     // Clear onclick to avoid stale closures
-    const addBtn     = document.getElementById('add-field-btn');
-    const previewBtn = document.getElementById('preview-form-btn');
+    const addBtn     = container.querySelector('#add-field-btn');
+    const previewBtn = container.querySelector('#preview-form-btn');
     if (addBtn)     addBtn.onclick     = null;
     if (previewBtn) previewBtn.onclick = null;
   }
 
   function openFieldEditor(process) {
     selectedProcess = process;
-    const card = document.getElementById('field-editor-card');
+    const card = container.querySelector('#field-editor-card');
     if (card) card.style.display = '';
-    document.getElementById('field-editor-title').textContent = `Fields: ${process.process_name}`;
+    const titleEl = container.querySelector('#field-editor-title');
+    if (titleEl) titleEl.textContent = `Fields: ${process.process_name}`;
 
     // Use .onclick — reassigning always replaces the old handler (no accumulation)
-    const addBtn     = document.getElementById('add-field-btn');
-    const previewBtn = document.getElementById('preview-form-btn');
+    const addBtn     = container.querySelector('#add-field-btn');
+    const previewBtn = container.querySelector('#preview-form-btn');
     if (addBtn)     addBtn.onclick     = () => openFieldForm(process.process_id, null, () => refreshFields(process.process_id));
     if (previewBtn) previewBtn.onclick = () => showFormPreview(process);
 
@@ -99,12 +103,12 @@ export async function renderProcesses(container) {
 
   // ── Refresh process list ──────────────────────────────────
   async function refreshProcesses() {
-    const filterProd = document.getElementById('proc-product-filter')?.value || '';
+    const filterProd = container.querySelector('#proc-product-filter')?.value || '';
     let allProcs = (await readAllRows(SHEETS.PROCESSES))
       .sort((a, b) => parseInt(a.sequence_order) - parseInt(b.sequence_order));
     if (filterProd) allProcs = allProcs.filter(p => p.product_id === filterProd);
 
-    const list = document.getElementById('process-list');
+    const list = container.querySelector('#process-list');
     if (!list) return;
 
     if (allProcs.length === 0) {
@@ -161,7 +165,7 @@ export async function renderProcesses(container) {
       .filter(f => f.process_id === processId)
       .sort((a, b) => parseInt(a.sequence_order) - parseInt(b.sequence_order));
 
-    const list = document.getElementById('field-list');
+    const list = container.querySelector('#field-list');
     if (!list) return;
 
     if (fields.length === 0) {

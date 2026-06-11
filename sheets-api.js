@@ -349,6 +349,17 @@ export async function softDelete(sheetName, id) {
   if (updatedAtCol >= 0) await updateFieldInRow(sheetName, rowNum, updatedAtCol, new Date().toISOString());
 }
 
+/** Hard delete — physically removes the row from the sheet */
+export async function hardDelete(sheetName, id) {
+  const rowNum = await findRowById(sheetName, id);
+  if (rowNum < 0) throw new Error(`Record ${id} not found in ${sheetName}`);
+  if (useWebApp()) {
+    await webAppPost({ action: 'deleteRow', sheet: sheetName, row: rowNum });
+    return;
+  }
+  throw new Error('Hard delete requires the Web App backend');
+}
+
 /** Update a single field */
 export async function updateFieldInRow(sheetName, rowNumber, colIndex, value) {
   const colLetter = String.fromCharCode(65 + colIndex);

@@ -119,6 +119,17 @@ function doPost(e) {
       return jsonResponse({ ok: true, updatedRow: rowNum });
     }
 
+    // ── Delete a row by number ───────────────────────────────
+    if (action === 'deleteRow') {
+      const ss  = SpreadsheetApp.getActiveSpreadsheet();
+      const sh  = ss.getSheetByName(body.sheet);
+      if (!sh) return jsonResponse({ error: 'Sheet not found: ' + body.sheet });
+      const rowNum = parseInt(body.row);
+      if (!rowNum || rowNum < 2) return jsonResponse({ error: 'Invalid row number (must be >= 2)' });
+      sh.deleteRow(rowNum);
+      return jsonResponse({ ok: true, deletedRow: rowNum });
+    }
+
     // ── Find row by ID (column A) ────────────────────────────
     if (action === 'findRow') {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
