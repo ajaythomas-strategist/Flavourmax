@@ -112,9 +112,14 @@ export async function renderNewBatch(container) {
   const allProcesses= activeOnly(parseSheetRows(SHEETS.PROCESSES,   batchData[6].values || []))
     .sort((a, b) => parseInt(a.sequence_order) - parseInt(b.sequence_order));
 
-  const productSelect = document.getElementById('nb-product');
-  const companySelect = document.getElementById('nb-company');
-  const unitSelect    = document.getElementById('nb-unit');
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
+  const productSelect = container.querySelector('#nb-product');
+  const companySelect = container.querySelector('#nb-company');
+  const unitSelect    = container.querySelector('#nb-unit');
+  const qtyInput      = container.querySelector('#nb-qty');
+
+  if (!productSelect || !companySelect || !unitSelect) return;
 
   products.forEach(p   => productSelect.insertAdjacentHTML('beforeend',  `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
   companies.forEach(c  => companySelect.insertAdjacentHTML('beforeend',  `<option value="${escHtml(c.company_id)}">${escHtml(c.company_name)}</option>`));
@@ -131,7 +136,7 @@ export async function renderNewBatch(container) {
   // MOBILE: Ingredient cards
   // ─────────────────────────────────────────────────────────
   function addMobileCard(ingId = '', qty = '', unitId = '') {
-    const wrap = document.getElementById('ing-cards');
+    const wrap = container.querySelector('#ing-cards');
     const card = document.createElement('div');
     card.className = 'm-entry-form';
     card.style.cssText = 'padding:var(--space-4);gap:var(--space-3);position:relative';
@@ -208,7 +213,7 @@ export async function renderNewBatch(container) {
   // DESKTOP: Ingredient table row
   // ─────────────────────────────────────────────────────────
   function addDesktopRow(ingId = '', qty = '', unitId = '', warehouseId = '') {
-    const tbody = document.getElementById('ingredient-rows');
+    const tbody = container.querySelector('#ingredient-rows');
     const tr = document.createElement('tr');
     tr.style.borderBottom = '1px solid var(--color-border)';
     tr.innerHTML = `
@@ -262,8 +267,9 @@ export async function renderNewBatch(container) {
 
   // ── Show correct container based on device ────────────────
   function initIngredientLayout() {
-    const tableWrap = document.getElementById('ing-table-wrap');
-    const cardsWrap = document.getElementById('ing-cards');
+    const tableWrap = container.querySelector('#ing-table-wrap');
+    const cardsWrap = container.querySelector('#ing-cards');
+    if (!tableWrap || !cardsWrap) return;
     if (isMobile()) {
       tableWrap.style.display = 'none';
       cardsWrap.style.display = 'flex';
@@ -274,38 +280,50 @@ export async function renderNewBatch(container) {
   }
 
   // ── Load / refresh ingredient rows from recipe ─────────────
+  // Auto-scales recipe quantities by the planned batch qty
   function refreshIngredientSection() {
     const prodId = productSelect.value;
     const compId = companySelect.value;
-    const section = document.getElementById('ingredient-section');
-    const tbody = document.getElementById('ingredient-rows');
-    const cardsWrap = document.getElementById('ing-cards');
-    const noRecipeNote = document.getElementById('no-recipe-note');
+    const section = container.querySelector('#ingredient-section');
+    const tbody = container.querySelector('#ingredient-rows');
+    const cardsWrap = container.querySelector('#ing-cards');
+    const noRecipeNote = container.querySelector('#no-recipe-note');
 
-    if (!prodId || !compId) { section.style.display = 'none'; return; }
+    if (!prodId || !compId || !section) { if (section) section.style.display = 'none'; return; }
+
+    // Scale factor: recipe is for 1 unit — multiply by planned qty
+    const plannedQty = parseFloat(qtyInput?.value || 1) || 1;
 
     section.style.display = '';
     initIngredientLayout();
-    tbody.innerHTML = '';
-    cardsWrap.innerHTML = '';
+    if (tbody) tbody.innerHTML = '';
+    if (cardsWrap) cardsWrap.innerHTML = '';
 
     const recipes = allRecipes.filter(r => r.product_id === prodId && r.company_id === compId);
 
     if (recipes.length === 0) {
-      noRecipeNote.style.display = '';
+      if (noRecipeNote) noRecipeNote.style.display = '';
       addIngRow();
     } else {
-      noRecipeNote.style.display = 'none';
-      recipes.forEach(r => addIngRow(r.ingredient_id, r.quantity, r.unit_id, ''));
+      if (noRecipeNote) noRecipeNote.style.display = 'none';
+      recipes.forEach(r => {
+        const scaledQty = (parseFloat(r.quantity || 0) * plannedQty).toFixed(3).replace(/\.?0+$/, '');
+        addIngRow(r.ingredient_id, scaledQty, r.unit_id, '');
+      });
     }
   }
 
   productSelect.addEventListener('change', refreshIngredientSection);
   companySelect.addEventListener('change', refreshIngredientSection);
+  // Re-scale ingredient quantities when planned qty changes
+  qtyInput?.addEventListener('input', () => {
+    const section = container.querySelector('#ingredient-section');
+    if (section && section.style.display !== 'none') refreshIngredientSection();
+  });
 
-  document.getElementById('add-ing-row').addEventListener('click', () => {
-    const section = document.getElementById('ingredient-section');
-    section.style.display = '';
+  container.querySelector('#add-ing-row')?.addEventListener('click', () => {
+    const section = container.querySelector('#ingredient-section');
+    if (section) section.style.display = '';
     initIngredientLayout();
     addIngRow();
   });
@@ -314,7 +332,7 @@ export async function renderNewBatch(container) {
   function collectIngredients() {
     const rows = [];
     if (isMobile()) {
-      document.querySelectorAll('#ing-cards .m-entry-form').forEach(card => {
+      container.querySelectorAll('#ing-cards .m-entry-form').forEach(card => {
         const ingId = card.querySelector('.r-ing')?.value;
         const qty   = parseFloat(card.querySelector('.r-qty')?.value || 0);
         const unitId= card.querySelector('.r-unit')?.value;
@@ -323,7 +341,7 @@ export async function renderNewBatch(container) {
         if (ingId && qty > 0) rows.push({ ingId, qty, unitId, rate, whId });
       });
     } else {
-      document.querySelectorAll('#ingredient-rows tr').forEach(tr => {
+      container.querySelectorAll('#ingredient-rows tr').forEach(tr => {
         const ingId = tr.querySelector('.r-ing')?.value;
         const qty   = parseFloat(tr.querySelector('.r-qty')?.value || 0);
         const unitId= tr.querySelector('.r-unit')?.value;
@@ -336,10 +354,10 @@ export async function renderNewBatch(container) {
   }
 
   // ── Form Submit ───────────────────────────────────────────
-  document.getElementById('new-batch-form')?.addEventListener('submit', async (e) => {
+  container.querySelector('#new-batch-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    const btn  = document.getElementById('create-batch-btn');
+    const btn  = container.querySelector('#create-batch-btn');
     btn.disabled = true; btn.textContent = 'Creating…';
 
     try {

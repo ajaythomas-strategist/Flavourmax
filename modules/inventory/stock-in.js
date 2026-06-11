@@ -60,6 +60,8 @@ export async function renderStockIn(container) {
   const supOpts = suppliers.map(s =>
     `<option value="${escHtml(s.supplier_name)}">${escHtml(s.supplier_name)}</option>`).join('');
 
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
   if (!canEdit) { renderHistory(); return; }
 
   // ── Shared save logic ─────────────────────────────────────
@@ -90,7 +92,7 @@ export async function renderStockIn(container) {
   // MOBILE: Vertical card form
   // ─────────────────────────────────────────────────────────
   function renderMobileEntry() {
-    const section = document.getElementById('si-entry-section');
+    const section = container.querySelector('#si-entry-section');
     section.innerHTML = `
       <div class="m-entry-form" style="margin-bottom:1.25rem">
         <div class="m-entry-form__title">📥 New Stock Entry</div>
@@ -167,11 +169,11 @@ export async function renderStockIn(container) {
       </div>
     `;
 
-    const ingEl  = document.getElementById('m-ing');
-    const unitEl = document.getElementById('m-unit');
-    const qtyEl  = document.getElementById('m-qty');
-    const rateEl = document.getElementById('m-rate');
-    const totEl  = document.getElementById('m-total');
+    const ingEl  = section.querySelector('#m-ing');
+    const unitEl = section.querySelector('#m-unit');
+    const qtyEl  = section.querySelector('#m-qty');
+    const rateEl = section.querySelector('#m-rate');
+    const totEl  = section.querySelector('#m-total');
 
     // Auto-fill unit from ingredient
     ingEl.addEventListener('change', () => {
@@ -188,33 +190,34 @@ export async function renderStockIn(container) {
     rateEl.addEventListener('input', recalc);
 
     // Save button
-    document.getElementById('m-save-btn').addEventListener('click', async () => {
+    section.querySelector('#m-save-btn').addEventListener('click', async () => {
       const ingId   = ingEl.value;
       const qty     = parseFloat(qtyEl.value || 0);
       const unitId  = unitEl.value;
-      const date    = document.getElementById('m-date').value;
-      const supplier= document.getElementById('m-supplier').value;
+      const date    = section.querySelector('#m-date').value;
+      const supplier= section.querySelector('#m-supplier').value;
       const rate    = parseFloat(rateEl.value || 0);
       const total   = parseFloat(totEl.value || 0);
-      const whId    = document.getElementById('m-wh').value;
-      const invoice = document.getElementById('m-invoice').value.trim();
+      const whId    = section.querySelector('#m-wh').value;
+      const invoice = section.querySelector('#m-invoice').value.trim();
 
       if (!ingId)       { toast.warning('Select an ingredient.'); ingEl.focus(); return; }
       if (!qty || qty <= 0) { toast.warning('Enter a valid quantity.'); qtyEl.focus(); return; }
       if (!date)        { toast.warning('Select a date.'); return; }
 
-      const btn = document.getElementById('m-save-btn');
+      const btn = section.querySelector('#m-save-btn');
       btn.disabled = true; btn.textContent = 'Saving…';
 
       try {
         const id = await saveEntry({ ingId, qty, unitId, date, supplier, rate, total, whId, invoice });
 
+        if (!document.body.contains(container)) return; // navigated away during save
         // Show saved card
-        const savedSection = document.getElementById('m-saved-section');
-        const savedList    = document.getElementById('m-saved-list');
-        const countEl      = document.getElementById('m-saved-count');
-        savedSection.style.display = '';
-        countEl.textContent = parseInt(countEl.textContent || 0) + 1;
+        const savedSection = section.querySelector('#m-saved-section');
+        const savedList    = section.querySelector('#m-saved-list');
+        const countEl      = section.querySelector('#m-saved-count');
+        if (savedSection) savedSection.style.display = '';
+        if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
 
         const card = document.createElement('div');
         card.className = 'm-entry-card';
@@ -231,13 +234,15 @@ export async function renderStockIn(container) {
             <div class="m-entry-card__id">${escHtml(id)}</div>
           </div>
         `;
-        savedList.insertBefore(card, savedList.firstChild);
+        if (savedList) savedList.insertBefore(card, savedList.firstChild);
 
         // Reset form for next entry
         qtyEl.value = ''; rateEl.value = ''; totEl.value = '';
-        document.getElementById('m-invoice').value = '';
+        const invoiceEl = section.querySelector('#m-invoice');
+        const whEl = section.querySelector('#m-wh');
+        if (invoiceEl) invoiceEl.value = '';
         ingEl.value = ''; unitEl.value = '';
-        document.getElementById('m-wh').value = '';
+        if (whEl) whEl.value = '';
         ingEl.focus();
 
         toast.success(`Saved — ${ingMap[ingId] || ingId}`);
@@ -253,7 +258,7 @@ export async function renderStockIn(container) {
   // DESKTOP: Horizontal table entry (unchanged)
   // ─────────────────────────────────────────────────────────
   function renderDesktopEntry() {
-    const section = document.getElementById('si-entry-section');
+    const section = container.querySelector('#si-entry-section');
     section.innerHTML = `
       <div class="card" style="margin-bottom:1.5rem">
         <div class="card__header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
@@ -285,9 +290,9 @@ export async function renderStockIn(container) {
       </div>
     `;
 
-    document.getElementById('si-add-row')?.addEventListener('click', addDesktopRow);
-    document.getElementById('si-save-all')?.addEventListener('click', async () => {
-      const rows = [...document.querySelectorAll('#si-entry-body .si-entry-row')];
+    section.querySelector('#si-add-row')?.addEventListener('click', addDesktopRow);
+    section.querySelector('#si-save-all')?.addEventListener('click', async () => {
+      const rows = [...section.querySelectorAll('#si-entry-body .si-entry-row')];
       if (!rows.length) { toast.warning('No rows to save.'); return; }
       for (const tr of rows) await saveDesktopRow(tr);
     });
@@ -295,7 +300,7 @@ export async function renderStockIn(container) {
   }
 
   function addDesktopRow() {
-    const tbody = document.getElementById('si-entry-body');
+    const tbody = container.querySelector('#si-entry-body');
     if (!tbody) return;
     const tr = document.createElement('tr');
     tr.className = 'si-entry-row';
@@ -332,7 +337,7 @@ export async function renderStockIn(container) {
     rateI.addEventListener('input', recalc);
     tr.querySelector('.r-remove-btn').addEventListener('click', () => {
       tr.remove();
-      if (!document.querySelector('#si-entry-body .si-entry-row')) addDesktopRow();
+      if (!container.querySelector('#si-entry-body .si-entry-row')) addDesktopRow();
     });
     tr.querySelector('.r-save-btn').addEventListener('click', () => saveDesktopRow(tr));
     tbody.appendChild(tr);
@@ -372,7 +377,7 @@ export async function renderStockIn(container) {
         <td style="${TD}">${escHtml(invoice || '—')}</td>
         <td style="${TD};text-align:center"><span style="color:var(--color-success);font-weight:600">✓ Saved</span><br><small>${escHtml(id)}</small></td>
       `;
-      if (!document.querySelector('#si-entry-body .si-entry-row')) addDesktopRow();
+      if (!container.querySelector('#si-entry-body .si-entry-row')) addDesktopRow();
       toast.success(`Saved — ${ingMap[ingId] || ingId} (${id})`);
     } catch (err) {
       btn.disabled = false; btn.textContent = '✓ Save';
@@ -381,17 +386,19 @@ export async function renderStockIn(container) {
   }
 
   // ── History ───────────────────────────────────────────────
-  document.getElementById('si-apply-filter')?.addEventListener('click', renderHistory);
+  container.querySelector('#si-apply-filter')?.addEventListener('click', renderHistory);
 
   function renderHistory() {
-    const from = document.getElementById('si-filter-from')?.value || '';
-    const to   = document.getElementById('si-filter-to')?.value   || '';
+    const from = container.querySelector('#si-filter-from')?.value || '';
+    const to   = container.querySelector('#si-filter-to')?.value   || '';
     let rows = [...allStockIn];
     if (from) rows = rows.filter(r => r.in_date >= from);
     if (to)   rows = rows.filter(r => r.in_date <= to);
     rows.reverse();
 
-    new DataTable(document.getElementById('si-history-table'), {
+    const histTableEl = container.querySelector('#si-history-table');
+    if (!histTableEl) return;
+    new DataTable(histTableEl, {
       columns: [
         { key: 'in_id',         label: 'ID' },
         { key: 'in_date',       label: 'Date', sortable: true },

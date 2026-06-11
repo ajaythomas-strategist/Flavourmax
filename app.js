@@ -10,6 +10,7 @@ import { loadDimCache } from './sheets-api.js';
 const ROUTES = {
   'dashboard':                   () => import('./modules/dashboard.js').then(m => m.renderDashboard),
   'master/companies':            () => import('./modules/master/companies.js').then(m => m.renderCompanies),
+  'master/categories':           () => import('./modules/master/categories.js').then(m => m.renderCategories),
   'master/products':             () => import('./modules/master/products.js').then(m => m.renderProducts),
   'master/ingredients':          () => import('./modules/master/ingredients.js').then(m => m.renderIngredients),
   'master/processes':            () => import('./modules/master/processes.js').then(m => m.renderProcesses),

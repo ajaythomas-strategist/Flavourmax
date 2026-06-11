@@ -773,7 +773,7 @@ input[readonly], .input--readonly {
 }
 @media (max-width: 900px) { .process-layout { grid-template-columns: 1fr; } }
 
-.process-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.process-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-2); }
 .process-item {
   display: flex; align-items: flex-start; gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
@@ -1204,13 +1204,145 @@ body.sidebar--open #fm-overlay { display: block; }
   }
   .fm-modal__footer .btn { width: 100%; justify-content: center; }
 
-  /* ── Form grids: always single column on mobile ────────── */
+  /* ── Form grids: vertical layout, prominent labels ─────── */
   .form-grid { grid-template-columns: 1fr !important; }
   .form-group--row { flex-direction: column; }
   .process-form { grid-template-columns: 1fr !important; }
   .filter-bar { flex-direction: column; align-items: stretch; }
   .filter-bar .form-group { min-width: 0; flex: auto; }
   .filter-bar .btn { min-width: 0; }
+
+  /* Label: uppercase field header style (native-app feel) */
+  .form-group > label,
+  .form-group__half > label,
+  .m-entry-form label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-muted);
+    margin-bottom: 3px;
+    display: block;
+  }
+
+  /* Taller inputs — 48px touch target, prevent iOS zoom */
+  .form-group input:not([type="checkbox"]):not([type="radio"]),
+  .form-group select,
+  .form-group textarea,
+  .m-entry-form input:not([type="checkbox"]),
+  .m-entry-form select,
+  .m-entry-form textarea {
+    font-size: 16px !important;
+    min-height: 48px;
+    padding: 0.7rem 0.875rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    width: 100%;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .m-entry-form input:focus,
+  .m-entry-form select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px hsla(175,55%,26%,.12);
+    outline: none;
+  }
+
+  /* Two-column row: qty+unit, rate+total */
+  .form-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+
+  /* ── Mobile entry form card ─────────────────────────────── */
+  .m-entry-form {
+    background: var(--color-bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .m-entry-form__title {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    color: var(--color-text);
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--color-primary-soft);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* ── Saved entry summary card ───────────────────────────── */
+  .m-entry-card {
+    background: var(--color-success-soft);
+    border: 1px solid hsl(145,60%,75%);
+    border-left: 4px solid var(--color-success);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .m-entry-card__main { flex: 1; min-width: 0; }
+  .m-entry-card__icon { font-size: 1.25rem; flex-shrink: 0; margin-top: 2px; }
+
+  .m-entry-card__name {
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    color: var(--color-success);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .m-entry-card__detail {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+
+  .m-entry-card__id {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    font-family: monospace;
+    margin-top: 2px;
+  }
+
+  .m-saved-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .m-saved-list__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+  }
+
+  .m-saved-list__title {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-muted);
+  }
+
+  .m-entry-form input[readonly] {
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: default;
+  }
 
   /* ── Card header actions: wrap & grow on mobile ─────────── */
   .card__header { flex-wrap: wrap; }

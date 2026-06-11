@@ -23,9 +23,9 @@ export async function renderCorrectionsInbox(container) {
   `;
 
   let activeTab = 'pending';
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  container.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-btn--active'));
+      container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-btn--active'));
       btn.classList.add('tab-btn--active');
       activeTab = btn.dataset.tab;
       loadCorrections(activeTab);
@@ -34,13 +34,16 @@ export async function renderCorrectionsInbox(container) {
 
   async function loadCorrections(tab) {
     const corrections = await readAllRows(SHEETS.CORRECTIONS);
+    if (!document.body.contains(container)) return;
+    const tableEl = container.querySelector('#corrections-table');
+    if (!tableEl) return;
     const filtered = tab === 'pending'
       ? corrections.filter(c => c.status === 'Pending')
       : corrections.filter(c => c.status !== 'Pending');
 
     const canApprove = hasPermission('corrections_approve');
 
-    new DataTable(document.getElementById('corrections-table'), {
+    new DataTable(tableEl, {
       columns: [
         { key: 'correction_id',  label: 'ID' },
         { key: 'requested_at',   label: 'Requested', sortable: true, render: (v) => v ? new Date(v).toLocaleString('en-IN') : '' },

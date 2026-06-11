@@ -13,6 +13,7 @@ const NAV_ITEMS = [
     label: 'Master Data', icon: '⚙', perm: 'master_view',
     children: [
       { label: 'Companies',       icon: '🏢', route: 'master/companies',   perm: 'master_view' },
+      { label: 'Categories',      icon: '🏷', route: 'master/categories',  perm: 'master_view' },
       { label: 'Products',        icon: '📦', route: 'master/products',    perm: 'master_view' },
       { label: 'Ingredients',     icon: '🧪', route: 'master/ingredients', perm: 'master_view' },
       { label: 'Processes & Fields', icon: '🔧', route: 'master/processes', perm: 'master_view' },

@@ -23,13 +23,14 @@ export async function renderCompanies(container) {
   `;
 
   if (canEdit) {
-    document.getElementById('add-company-btn')?.addEventListener('click', () => openCompanyForm(null, refreshTable));
+    container.querySelector('#add-company-btn')?.addEventListener('click', () => openCompanyForm(null, refreshTable));
   }
 
   let table;
   async function refreshTable() {
     const rows = await readAllRows(SHEETS.COMPANIES);
-    const tableContainer = document.getElementById('companies-table');
+    if (!document.body.contains(container)) return;
+    const tableContainer = container.querySelector('#companies-table');
     if (!tableContainer) return;
 
     table = new DataTable(tableContainer, {

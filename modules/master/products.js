@@ -17,7 +17,7 @@ export async function renderProducts(container) {
     </div>
     <div class="card"><div class="card__body" id="products-table"></div></div>
   `;
-  if (canEdit) document.getElementById('add-product-btn')?.addEventListener('click', () => openForm(null, refresh));
+  if (canEdit) container.querySelector('#add-product-btn')?.addEventListener('click', () => openForm(null, refresh));
 
   async function refresh() {
     const [products, categories, units] = await Promise.all([
@@ -25,10 +25,13 @@ export async function renderProducts(container) {
       readAllRows(SHEETS.CATEGORIES),
       readAllRows(SHEETS.UNITS),
     ]);
+    if (!document.body.contains(container)) return;
+    const tableEl = container.querySelector('#products-table');
+    if (!tableEl) return;
     const catMap  = Object.fromEntries(categories.map(c => [c.category_id, c.category_name]));
     const unitMap = Object.fromEntries(units.map(u => [u.unit_id, u.unit_name]));
 
-    new DataTable(document.getElementById('products-table'), {
+    new DataTable(tableEl, {
       columns: [
         { key: 'product_name',  label: 'Product', sortable: true },
         { key: 'category_id',   label: 'Category', render: (v) => escHtml(catMap[v] || v) },

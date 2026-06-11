@@ -34,6 +34,9 @@ export async function renderStockOut(container) {
     `${SHEETS.PRODUCTION_BATCHES}!A:L`,
     `${SHEETS.INVENTORY_OUT}!A:I`,
   ]);
+
+  if (!document.body.contains(container)) return; // navigated away during fetch
+
   const ingredients = activeOnly(parseSheetRows(SHEETS.INGREDIENTS,       batchData[0].values || []));
   const units       = activeOnly(parseSheetRows(SHEETS.UNITS,             batchData[1].values || []));
   const batches     = parseSheetRows(SHEETS.PRODUCTION_BATCHES,           batchData[2].values || [])
@@ -76,7 +79,8 @@ export async function renderStockOut(container) {
   // MOBILE: Vertical card form
   // ─────────────────────────────────────────────────────────
   function renderMobileEntry() {
-    const section = document.getElementById('so-entry-section');
+    const section = container.querySelector('#so-entry-section');
+    if (!section) return;
     section.innerHTML = `
       <div class="m-entry-form" style="margin-bottom:1.25rem">
         <div class="m-entry-form__title">📤 New Stock Out Entry</div>
@@ -137,8 +141,9 @@ export async function renderStockOut(container) {
       </div>
     `;
 
-    const ingEl = document.getElementById('m-ing');
-    const unitEl = document.getElementById('m-unit');
+    const ingEl  = section.querySelector('#m-ing');
+    const unitEl = section.querySelector('#m-unit');
+    const qtyEl  = section.querySelector('#m-qty');
 
     // Auto-fill unit from ingredient
     ingEl.addEventListener('change', () => {
@@ -146,30 +151,31 @@ export async function renderStockOut(container) {
       if (ing?.unit_id) unitEl.value = ing.unit_id;
     });
 
-    document.getElementById('m-save-btn').addEventListener('click', async () => {
+    section.querySelector('#m-save-btn').addEventListener('click', async () => {
       const ingId   = ingEl.value;
-      const qty     = parseFloat(document.getElementById('m-qty').value || 0);
+      const qty     = parseFloat(qtyEl.value || 0);
       const unitId  = unitEl.value;
-      const date    = document.getElementById('m-date').value;
-      const reason  = document.getElementById('m-reason').value;
-      const batchId = document.getElementById('m-batch').value;
+      const date    = section.querySelector('#m-date').value;
+      const reason  = section.querySelector('#m-reason').value;
+      const batchId = section.querySelector('#m-batch').value;
 
       if (!ingId)          { toast.warning('Select an ingredient.'); ingEl.focus(); return; }
-      if (!qty || qty <= 0){ toast.warning('Enter a valid quantity.'); document.getElementById('m-qty').focus(); return; }
-      if (!reason)         { toast.warning('Select a reason.'); document.getElementById('m-reason').focus(); return; }
+      if (!qty || qty <= 0){ toast.warning('Enter a valid quantity.'); qtyEl.focus(); return; }
+      if (!reason)         { toast.warning('Select a reason.'); section.querySelector('#m-reason').focus(); return; }
       if (!date)           { toast.warning('Select a date.'); return; }
 
-      const btn = document.getElementById('m-save-btn');
+      const btn = section.querySelector('#m-save-btn');
       btn.disabled = true; btn.textContent = 'Saving…';
 
       try {
         const id = await saveEntry({ ingId, qty, unitId, date, reason, batchId });
 
-        const savedSection = document.getElementById('m-saved-section');
-        const savedList    = document.getElementById('m-saved-list');
-        const countEl      = document.getElementById('m-saved-count');
-        savedSection.style.display = '';
-        countEl.textContent = parseInt(countEl.textContent || 0) + 1;
+        if (!document.body.contains(container)) return; // navigated away during save
+        const savedSection = section.querySelector('#m-saved-section');
+        const savedList    = section.querySelector('#m-saved-list');
+        const countEl      = section.querySelector('#m-saved-count');
+        if (savedSection) savedSection.style.display = '';
+        if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
 
         const card = document.createElement('div');
         card.className = 'm-entry-card';
@@ -184,29 +190,33 @@ export async function renderStockOut(container) {
             <div class="m-entry-card__id">${escHtml(id)}</div>
           </div>
         `;
-        savedList.insertBefore(card, savedList.firstChild);
+        if (savedList) savedList.insertBefore(card, savedList.firstChild);
 
         // Reset form for next entry
-        document.getElementById('m-qty').value = '';
+        qtyEl.value = '';
         ingEl.value = ''; unitEl.value = '';
-        document.getElementById('m-reason').value = '';
-        document.getElementById('m-batch').value = '';
+        const reasonEl = section.querySelector('#m-reason');
+        const batchElF = section.querySelector('#m-batch');
+        if (reasonEl) reasonEl.value = '';
+        if (batchElF) batchElF.value = '';
         ingEl.focus();
 
         toast.success(`Saved — ${ingMap[ingId] || ingId}`);
       } catch (err) {
         toast.error(err.message);
       } finally {
-        btn.disabled = false; btn.textContent = '✓ Save Entry';
+        const btnEl = section.querySelector('#m-save-btn');
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = '✓ Save Entry'; }
       }
     });
   }
 
   // ─────────────────────────────────────────────────────────
-  // DESKTOP: Horizontal table entry (unchanged)
+  // DESKTOP: Horizontal table entry
   // ─────────────────────────────────────────────────────────
   function renderDesktopEntry() {
-    const section = document.getElementById('so-entry-section');
+    const section = container.querySelector('#so-entry-section');
+    if (!section) return;
     section.innerHTML = `
       <div class="card" style="margin-bottom:1.5rem">
         <div class="card__header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
@@ -235,9 +245,9 @@ export async function renderStockOut(container) {
       </div>
     `;
 
-    document.getElementById('so-add-row').addEventListener('click', addDesktopRow);
-    document.getElementById('so-save-all').addEventListener('click', async () => {
-      const rows = [...document.querySelectorAll('#so-entry-body .so-entry-row')];
+    section.querySelector('#so-add-row').addEventListener('click', addDesktopRow);
+    section.querySelector('#so-save-all').addEventListener('click', async () => {
+      const rows = [...section.querySelectorAll('#so-entry-body .so-entry-row')];
       if (!rows.length) { toast.warning('No rows to save.'); return; }
       for (const tr of rows) await saveDesktopRow(tr);
     });
@@ -245,7 +255,7 @@ export async function renderStockOut(container) {
   }
 
   function addDesktopRow() {
-    const tbody = document.getElementById('so-entry-body');
+    const tbody = container.querySelector('#so-entry-body');
     if (!tbody) return;
     const tr = document.createElement('tr');
     tr.className = 'so-entry-row';
@@ -270,7 +280,7 @@ export async function renderStockOut(container) {
     });
     tr.querySelector('.r-remove-btn').addEventListener('click', () => {
       tr.remove();
-      if (!document.querySelector('#so-entry-body .so-entry-row')) addDesktopRow();
+      if (!container.querySelector('#so-entry-body .so-entry-row')) addDesktopRow();
     });
     tr.querySelector('.r-save-btn').addEventListener('click', () => saveDesktopRow(tr));
     tbody.appendChild(tr);
@@ -305,7 +315,7 @@ export async function renderStockOut(container) {
         <td style="${TD}">${escHtml(batchId || '—')}</td>
         <td style="${TD};text-align:center"><span style="color:var(--color-success);font-weight:600">✓ Saved</span><br><small>${escHtml(id)}</small></td>
       `;
-      if (!document.querySelector('#so-entry-body .so-entry-row')) addDesktopRow();
+      if (!container.querySelector('#so-entry-body .so-entry-row')) addDesktopRow();
       toast.success(`Saved — ${ingMap[ingId] || ingId} (${id})`);
     } catch (err) {
       btn.disabled = false; btn.textContent = '✓ Save';
@@ -315,7 +325,9 @@ export async function renderStockOut(container) {
 
   // ── History ───────────────────────────────────────────────
   function renderHistory() {
-    new DataTable(document.getElementById('so-history-table'), {
+    const histTableEl = container.querySelector('#so-history-table');
+    if (!histTableEl) return;
+    new DataTable(histTableEl, {
       columns: [
         { key: 'out_id',        label: 'ID' },
         { key: 'out_date',      label: 'Date', sortable: true },

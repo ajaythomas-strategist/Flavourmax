@@ -36,6 +36,7 @@ export async function renderBatchList(container) {
       `${SHEETS.PROCESS_LOG}!A:O`
     ]);
 
+    if (!document.body.contains(container)) return;
     const allBatches      = parseSheetRows(SHEETS.PRODUCTION_BATCHES, batchData[0].values || []);
     const products        = parseSheetRows(SHEETS.PRODUCTS, batchData[1].values || []);
     const companies       = parseSheetRows(SHEETS.COMPANIES, batchData[2].values || []);
@@ -54,9 +55,9 @@ export async function renderBatchList(container) {
     let batches = [...allBatches].reverse();
 
     function applyFilters() {
-      const status = document.getElementById('bl-status-filter')?.value;
-      const from   = document.getElementById('bl-from')?.value;
-      const to     = document.getElementById('bl-to')?.value;
+      const status = container.querySelector('#bl-status-filter')?.value;
+      const from   = container.querySelector('#bl-from')?.value;
+      const to     = container.querySelector('#bl-to')?.value;
       let filtered = [...allBatches].reverse();
       if (status) filtered = filtered.filter(b => b.status === status);
       if (from)   filtered = filtered.filter(b => b.batch_date >= from);
@@ -65,7 +66,9 @@ export async function renderBatchList(container) {
     }
 
     function render(data) {
-      new DataTable(document.getElementById('batch-table'), {
+      const batchTableEl = container.querySelector('#batch-table');
+      if (!batchTableEl) return;
+      new DataTable(batchTableEl, {
         columns: [
           { key: 'batch_id',    label: 'Batch ID', sortable: true },
           { key: 'batch_date',  label: 'Date', sortable: true },
@@ -103,7 +106,7 @@ export async function renderBatchList(container) {
       });
     }
 
-    document.getElementById('bl-apply')?.addEventListener('click', () => render(applyFilters()));
+    container.querySelector('#bl-apply')?.addEventListener('click', () => render(applyFilters()));
     render(batches);
   }
 

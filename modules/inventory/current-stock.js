@@ -16,7 +16,7 @@ export async function renderCurrentStock(container) {
     <div class="card"><div class="card__body" id="stock-table"></div></div>
   `;
 
-  document.getElementById('refresh-stock-btn')?.addEventListener('click', loadStock);
+  container.querySelector('#refresh-stock-btn')?.addEventListener('click', loadStock);
   await loadStock();
 
   async function loadStock() {

@@ -18,11 +18,14 @@ export async function renderSuppliers(container) {
     <div class="card"><div class="card__body" id="suppliers-table"></div></div>
   `;
 
-  if (canEdit) document.getElementById('add-supplier-btn')?.addEventListener('click', () => openForm(null, refresh));
+  if (canEdit) container.querySelector('#add-supplier-btn')?.addEventListener('click', () => openForm(null, refresh));
 
   async function refresh() {
     const suppliers = await readAllRows(SHEETS.SUPPLIERS);
-    new DataTable(document.getElementById('suppliers-table'), {
+    if (!document.body.contains(container)) return;
+    const tableEl = container.querySelector('#suppliers-table');
+    if (!tableEl) return;
+    new DataTable(tableEl, {
       columns: [
         { key: 'supplier_id',     label: 'ID' },
         { key: 'supplier_name',   label: 'Supplier Name',   sortable: true },

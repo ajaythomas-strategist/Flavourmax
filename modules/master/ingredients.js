@@ -17,12 +17,15 @@ export async function renderIngredients(container) {
     </div>
     <div class="card"><div class="card__body" id="ingredients-table"></div></div>
   `;
-  if (canEdit) document.getElementById('add-ing-btn')?.addEventListener('click', () => openForm(null, refresh));
+  if (canEdit) container.querySelector('#add-ing-btn')?.addEventListener('click', () => openForm(null, refresh));
 
   async function refresh() {
     const [ingredients, units] = await Promise.all([readAllRows(SHEETS.INGREDIENTS), readAllRows(SHEETS.UNITS)]);
+    if (!document.body.contains(container)) return;
+    const tableEl = container.querySelector('#ingredients-table');
+    if (!tableEl) return;
     const unitMap = Object.fromEntries(units.map(u => [u.unit_id, u.unit_name]));
-    new DataTable(document.getElementById('ingredients-table'), {
+    new DataTable(tableEl, {
       columns: [
         { key: 'ingredient_name', label: 'Ingredient', sortable: true },
         { key: 'category',        label: 'Category' },

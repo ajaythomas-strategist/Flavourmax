@@ -17,11 +17,14 @@ export async function renderUnits(container) {
     </div>
     <div class="card"><div class="card__body" id="units-table"></div></div>
   `;
-  if (canEdit) document.getElementById('add-unit-btn')?.addEventListener('click', () => openForm(null, refresh));
+  if (canEdit) container.querySelector('#add-unit-btn')?.addEventListener('click', () => openForm(null, refresh));
 
   async function refresh() {
     const units = await readAllRows(SHEETS.UNITS);
-    new DataTable(document.getElementById('units-table'), {
+    if (!document.body.contains(container)) return;
+    const tableEl = container.querySelector('#units-table');
+    if (!tableEl) return;
+    new DataTable(tableEl, {
       columns: [
         { key: 'unit_name',     label: 'Unit Name',     sortable: true },
         { key: 'abbreviation',  label: 'Abbreviation' },
