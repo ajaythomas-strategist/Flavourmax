@@ -136,8 +136,8 @@ function bindLoginForm() {
       await loginWithPassword(email, password);
       hideLogin();
       initSidebar(navigate);
-      btn.disabled = true; btn.textContent = 'Loading data…';
-      try { await loadDimCache(); } catch (e) { console.warn('Cache load failed:', e.message); }
+      // Cache loads in background; navigate immediately
+      loadDimCache().catch(e => console.warn('Cache load failed:', e.message));
       navigate('dashboard');
     } catch (ex) {
       if (err) err.textContent = ex.message;
@@ -169,17 +169,9 @@ async function bootstrap() {
     hideLogin();
     initSidebar(navigate);
 
-    // Show loading indicator while dim cache warms up
-    _showPageLoading('Connecting to backend…');
-    const warmupTimer = setTimeout(() => _showPageLoading('Waking up backend… this may take a moment on first load', true), 4_000);
-
-    try {
-      await loadDimCache();
-    } catch (e) {
-      console.warn('Cache load failed:', e.message);
-    } finally {
-      clearTimeout(warmupTimer);
-    }
+    // Start dim cache in background — don't block the first render.
+    // Each page fetches its own data; the cache just speeds up subsequent loads.
+    loadDimCache().catch(e => console.warn('Dim cache preload failed:', e.message));
 
     await renderRoute(window.location.hash || '#dashboard');
   } else {
