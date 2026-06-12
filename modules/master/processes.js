@@ -124,7 +124,7 @@ export async function renderProcesses(container) {
       groups.get(key).push(p);
     });
 
-    // Build HTML with full inline styles — bypasses any CSS caching
+    // Build HTML — all inline styles, grouped by product
     let html = '';
     for (const [productKey, procs] of groups) {
       const productName = productKey === '__general__'
@@ -135,47 +135,74 @@ export async function renderProcesses(container) {
       procs.forEach((p, i) => {
         const isActive = p.is_active === 'TRUE' || p.is_active === true;
         const isSelected = selectedProcess?.process_id === p.process_id;
+
+        // Arrow connector between steps
         if (i > 0) {
-          stepsHtml += `<div style="color:#888;font-size:1.2rem;padding:0 4px;align-self:center">→</div>`;
+          stepsHtml += `
+            <div style="display:flex;align-items:center;align-self:stretch;padding:0 2px;color:#aaa;font-size:1rem">
+              ›
+            </div>`;
         }
+
         stepsHtml += `
           <div data-id="${escHtml(p.process_id)}"
-               style="display:flex;flex-direction:column;gap:6px;padding:10px 14px;
-                      border-radius:10px;border:1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'};
-                      background:${isSelected ? 'var(--color-primary-soft)' : 'var(--color-surface)'};
-                      min-width:160px;max-width:200px;flex-shrink:0;cursor:pointer;
-                      transition:border-color .15s,background .15s">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:24px;height:24px;background:var(--color-primary);color:#fff;
+               style="display:flex;flex-direction:column;width:170px;flex-shrink:0;
+                      border-radius:12px;
+                      border:1.5px solid ${isSelected ? 'var(--color-primary)' : '#e2e8ec'};
+                      background:${isSelected ? '#eaf4f2' : '#fff'};
+                      box-shadow:0 1px 4px rgba(0,0,0,.06);
+                      overflow:hidden;cursor:pointer;
+                      transition:border-color .15s,box-shadow .15s">
+            <!-- Step header -->
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px 6px">
+              <div style="width:22px;height:22px;background:var(--color-primary);color:#fff;
                           border-radius:50%;display:flex;align-items:center;justify-content:center;
-                          font-size:11px;font-weight:700;flex-shrink:0">${escHtml(p.sequence_order)}</div>
-              <div style="font-weight:600;font-size:0.85rem;line-height:1.3">${escHtml(p.process_name)}</div>
+                          font-size:10px;font-weight:800;flex-shrink:0">${escHtml(p.sequence_order)}</div>
+              <div style="font-weight:700;font-size:0.8rem;line-height:1.3;color:#1a2e2a">${escHtml(p.process_name)}</div>
             </div>
-            ${p.description ? `<div style="font-size:0.78rem;color:var(--color-text-muted);line-height:1.3">${escHtml(p.description)}</div>` : ''}
-            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:2px">
-              <span style="font-size:0.75rem;font-weight:600;color:${isActive ? 'var(--color-success)' : 'var(--color-text-muted)'}">${isActive ? 'Active' : 'Inactive'}</span>
-              ${canEdit ? `<button class="btn btn--xs btn--ghost" data-action="edit" style="padding:2px 6px;font-size:0.75rem" title="Edit">✏</button>` : ''}
-              <button class="btn btn--xs btn--primary" data-action="fields" style="padding:2px 8px;font-size:0.75rem" title="Manage fields">⚙ Fields</button>
+            <!-- Description -->
+            <div style="flex:1;padding:0 12px 8px;font-size:0.75rem;color:#6b7f7c;line-height:1.4;min-height:28px">
+              ${p.description ? escHtml(p.description) : ''}
+            </div>
+            <!-- Footer: status + actions -->
+            <div style="display:flex;align-items:center;gap:4px;padding:6px 10px 8px;
+                        border-top:1px solid #f0f4f3;background:#f8fbfa;flex-wrap:wrap">
+              <span style="font-size:0.7rem;font-weight:700;
+                           color:${isActive ? '#1d8c60' : '#999'};
+                           background:${isActive ? '#e6f7f0' : '#f0f0f0'};
+                           padding:2px 7px;border-radius:20px">
+                ${isActive ? 'Active' : 'Inactive'}
+              </span>
+              ${canEdit ? `<button class="btn btn--xs btn--ghost" data-action="edit"
+                style="padding:2px 6px;font-size:0.7rem;margin-left:auto" title="Edit">✏</button>` : ''}
+              <button class="btn btn--xs btn--primary" data-action="fields"
+                style="padding:2px 8px;font-size:0.7rem${!canEdit ? ';margin-left:auto' : ''}" title="Fields">⚙ Fields</button>
             </div>
           </div>`;
       });
 
       html += `
-        <div style="display:flex;align-items:flex-start;gap:16px;padding:8px 0;border-bottom:1px solid var(--color-border)">
-          <div style="min-width:130px;max-width:130px;font-weight:700;font-size:0.875rem;
-                      color:var(--color-text);padding-top:10px;flex-shrink:0;word-break:break-word">
-            ${escHtml(productName)}
+        <div style="display:flex;align-items:stretch;gap:0;padding:16px 0;
+                    border-bottom:1px solid #eef1f3">
+          <!-- Product label -->
+          <div style="width:140px;min-width:140px;flex-shrink:0;
+                      display:flex;align-items:center;padding-right:16px">
+            <div style="font-weight:700;font-size:0.9rem;color:var(--color-primary);
+                        background:#eaf4f2;border-radius:8px;padding:6px 10px;
+                        width:100%;text-align:center;line-height:1.3">
+              ${escHtml(productName)}
+            </div>
           </div>
+          <!-- Steps row -->
           <div style="display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;
-                      align-items:flex-start;gap:4px;flex:1;padding-bottom:4px">
+                      align-items:stretch;gap:6px;flex:1;padding-bottom:2px;
+                      scrollbar-width:thin">
             ${stepsHtml}
           </div>
         </div>`;
     }
 
-    list.style.display = 'flex';
-    list.style.flexDirection = 'column';
-    list.style.gap = '0';
+    list.style.cssText = 'display:flex;flex-direction:column;gap:0;padding:0 4px';
     list.innerHTML = html;
 
     list.querySelectorAll('[data-action="edit"]').forEach(btn => {
