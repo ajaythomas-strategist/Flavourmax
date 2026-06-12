@@ -146,9 +146,8 @@ export async function renderProcesses(container) {
         }
 
         stepsHtml += `
-          <div data-id="${escHtml(p.process_id)}"
+          <div data-id="${escHtml(p.process_id)}" data-step-card
                style="display:flex;flex-direction:column;width:170px;min-width:170px;flex-shrink:0;
-                      min-height:130px;
                       border-radius:12px;
                       border:1.5px solid ${isSelected ? 'var(--color-primary)' : '#e2e8ec'};
                       background:${isSelected ? '#eaf4f2' : '#fff'};
@@ -195,10 +194,10 @@ export async function renderProcesses(container) {
               ${escHtml(productName)}
             </div>
           </div>
-          <!-- Steps row: outer handles scroll, inner handles equal-height flex -->
+          <!-- Steps row -->
           <div style="overflow-x:auto;flex:1;padding-bottom:4px;scrollbar-width:thin">
-            <div style="display:flex;flex-direction:row;flex-wrap:nowrap;
-                        align-items:stretch;gap:6px;min-width:max-content">
+            <div data-steps-row style="display:flex;flex-direction:row;flex-wrap:nowrap;
+                        gap:6px;min-width:max-content;align-items:flex-start">
               ${stepsHtml}
             </div>
           </div>
@@ -207,6 +206,16 @@ export async function renderProcesses(container) {
 
     list.style.cssText = 'display:flex;flex-direction:column;gap:0;padding:0 4px';
     list.innerHTML = html;
+
+    // Equalize card heights per product row using JS (CSS stretch is unreliable with overflow-x:auto)
+    requestAnimationFrame(() => {
+      list.querySelectorAll('[data-steps-row]').forEach(row => {
+        const cards = [...row.querySelectorAll('[data-step-card]')];
+        if (cards.length < 2) return;
+        const maxH = Math.max(...cards.map(c => c.getBoundingClientRect().height));
+        cards.forEach(c => { c.style.minHeight = maxH + 'px'; });
+      });
+    });
 
     list.querySelectorAll('[data-action="edit"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
