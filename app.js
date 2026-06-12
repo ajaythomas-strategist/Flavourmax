@@ -13,7 +13,7 @@ const ROUTES = {
   'master/categories':           () => import('./modules/master/categories.js').then(m => m.renderCategories),
   'master/products':             () => import('./modules/master/products.js').then(m => m.renderProducts),
   'master/ingredients':          () => import('./modules/master/ingredients.js').then(m => m.renderIngredients),
-  'master/processes':            () => import('./modules/master/processes.js?v=4').then(m => m.renderProcesses),
+  'master/processes':            () => import('./modules/master/processes.js?v=5').then(m => m.renderProcesses),
   'master/recipes':              () => import('./modules/master/recipes.js').then(m => m.renderRecipes),
   'master/units':                () => import('./modules/master/units.js').then(m => m.renderUnits),
   'master/suppliers':            () => import('./modules/master/suppliers.js').then(m => m.renderSuppliers),

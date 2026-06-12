@@ -195,11 +195,12 @@ export async function renderProcesses(container) {
               ${escHtml(productName)}
             </div>
           </div>
-          <!-- Steps row -->
-          <div style="display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;
-                      align-items:stretch;gap:6px;flex:1;padding-bottom:2px;
-                      scrollbar-width:thin">
-            ${stepsHtml}
+          <!-- Steps row: outer handles scroll, inner handles equal-height flex -->
+          <div style="overflow-x:auto;flex:1;padding-bottom:4px;scrollbar-width:thin">
+            <div style="display:flex;flex-direction:row;flex-wrap:nowrap;
+                        align-items:stretch;gap:6px;min-width:max-content">
+              ${stepsHtml}
+            </div>
           </div>
         </div>`;
     }
