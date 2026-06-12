@@ -112,11 +112,11 @@ export async function renderProcesses(container) {
     if (!list) return;
 
     if (allProcs.length === 0) {
-      list.innerHTML = '<p class="empty-msg">No processes configured. Add your first process.</p>';
+      list.innerHTML = '<p style="color:var(--color-text-muted);padding:1rem">No processes configured. Add your first process.</p>';
       return;
     }
 
-    // Group by product_id (empty = "All Products / General")
+    // Group by product_id
     const groups = new Map();
     allProcs.forEach(p => {
       const key = p.product_id || '__general__';
@@ -124,37 +124,64 @@ export async function renderProcesses(container) {
       groups.get(key).push(p);
     });
 
-    const rows = [...groups.entries()].map(([productKey, procs]) => {
+    // Build HTML with full inline styles — bypasses any CSS caching
+    let html = '';
+    for (const [productKey, procs] of groups) {
       const productName = productKey === '__general__'
         ? 'General (All Products)'
         : (prodMap[productKey] || productKey);
 
-      const steps = procs.map(p => `
-        <div class="pipeline-step ${selectedProcess?.process_id === p.process_id ? 'pipeline-step--active' : ''}"
-             data-id="${escHtml(p.process_id)}">
-          <div class="pipeline-step__seq">${escHtml(p.sequence_order)}</div>
-          <div class="pipeline-step__name">${escHtml(p.process_name)}</div>
-          ${p.description ? `<div class="pipeline-step__desc">${escHtml(p.description)}</div>` : ''}
-          <div class="pipeline-step__actions">
-            ${statusBadge((p.is_active === 'TRUE' || p.is_active === true) ? 'Active' : 'Inactive')}
-            ${canEdit ? `<button class="btn btn--xs btn--ghost" data-action="edit" title="Edit">✏</button>` : ''}
-            <button class="btn btn--xs btn--primary" data-action="fields" title="Manage fields">⚙ Fields</button>
+      let stepsHtml = '';
+      procs.forEach((p, i) => {
+        const isActive = p.is_active === 'TRUE' || p.is_active === true;
+        const isSelected = selectedProcess?.process_id === p.process_id;
+        if (i > 0) {
+          stepsHtml += `<div style="color:#888;font-size:1.2rem;padding:0 4px;align-self:center">→</div>`;
+        }
+        stepsHtml += `
+          <div data-id="${escHtml(p.process_id)}"
+               style="display:flex;flex-direction:column;gap:6px;padding:10px 14px;
+                      border-radius:10px;border:1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'};
+                      background:${isSelected ? 'var(--color-primary-soft)' : 'var(--color-surface)'};
+                      min-width:160px;max-width:200px;flex-shrink:0;cursor:pointer;
+                      transition:border-color .15s,background .15s">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:24px;height:24px;background:var(--color-primary);color:#fff;
+                          border-radius:50%;display:flex;align-items:center;justify-content:center;
+                          font-size:11px;font-weight:700;flex-shrink:0">${escHtml(p.sequence_order)}</div>
+              <div style="font-weight:600;font-size:0.85rem;line-height:1.3">${escHtml(p.process_name)}</div>
+            </div>
+            ${p.description ? `<div style="font-size:0.78rem;color:var(--color-text-muted);line-height:1.3">${escHtml(p.description)}</div>` : ''}
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:2px">
+              <span style="font-size:0.75rem;font-weight:600;color:${isActive ? 'var(--color-success)' : 'var(--color-text-muted)'}">${isActive ? 'Active' : 'Inactive'}</span>
+              ${canEdit ? `<button class="btn btn--xs btn--ghost" data-action="edit" style="padding:2px 6px;font-size:0.75rem" title="Edit">✏</button>` : ''}
+              <button class="btn btn--xs btn--primary" data-action="fields" style="padding:2px 8px;font-size:0.75rem" title="Manage fields">⚙ Fields</button>
+            </div>
+          </div>`;
+      });
+
+      html += `
+        <div style="display:flex;align-items:flex-start;gap:16px;padding:8px 0;border-bottom:1px solid var(--color-border)">
+          <div style="min-width:130px;max-width:130px;font-weight:700;font-size:0.875rem;
+                      color:var(--color-text);padding-top:10px;flex-shrink:0;word-break:break-word">
+            ${escHtml(productName)}
           </div>
-        </div>`).join('<div class="pipeline-arrow">→</div>');
-
-      return `
-        <div class="pipeline-row">
-          <div class="pipeline-row__label">${escHtml(productName)}</div>
-          <div class="pipeline-row__steps">${steps}</div>
+          <div style="display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;
+                      align-items:flex-start;gap:4px;flex:1;padding-bottom:4px">
+            ${stepsHtml}
+          </div>
         </div>`;
-    }).join('');
+    }
 
-    list.innerHTML = rows;
+    list.style.display = 'flex';
+    list.style.flexDirection = 'column';
+    list.style.gap = '0';
+    list.innerHTML = html;
 
     list.querySelectorAll('[data-action="edit"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const id   = e.target.closest('[data-id]')?.dataset.id;
+        const id  = e.target.closest('[data-id]')?.dataset.id;
         const proc = allProcs.find(p => p.process_id === id);
         if (proc) openProcessForm(proc, refreshProcesses, products);
       });
@@ -163,11 +190,9 @@ export async function renderProcesses(container) {
     list.querySelectorAll('[data-action="fields"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const id   = e.target.closest('[data-id]')?.dataset.id;
+        const id  = e.target.closest('[data-id]')?.dataset.id;
         const proc = allProcs.find(p => p.process_id === id);
         if (proc) openFieldEditor(proc);
-        list.querySelectorAll('.pipeline-step').forEach(el =>
-          el.classList.toggle('pipeline-step--active', el.dataset.id === id));
       });
     });
   }
