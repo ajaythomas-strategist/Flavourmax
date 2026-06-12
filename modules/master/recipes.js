@@ -18,12 +18,26 @@ export async function renderRecipes(container) {
       <div class="card__body">
         <div class="recipe-selector">
           <div class="form-group">
-            <label for="recipe-company">Company</label>
-            <select id="recipe-company"><option value="">-- Select Company --</option></select>
+            <label>Company</label>
+            <div style="position:relative">
+              <input type="text" id="recipe-company-text" placeholder="Type to search company…"
+                autocomplete="off" style="width:100%">
+              <input type="hidden" id="recipe-company-val">
+              <div id="company-dropdown" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:200;
+                background:#fff;border:1px solid #d1d5db;border-radius:8px;
+                box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:220px;overflow-y:auto"></div>
+            </div>
           </div>
           <div class="form-group">
-            <label for="recipe-product">Product</label>
-            <select id="recipe-product"><option value="">-- Select Product --</option></select>
+            <label>Product</label>
+            <div style="position:relative">
+              <input type="text" id="recipe-product-text" placeholder="Type to search product…"
+                autocomplete="off" style="width:100%">
+              <input type="hidden" id="recipe-product-val">
+              <div id="product-dropdown" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:200;
+                background:#fff;border:1px solid #d1d5db;border-radius:8px;
+                box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:220px;overflow-y:auto"></div>
+            </div>
           </div>
           <div class="recipe-selector__actions">
             <button class="btn btn--primary" id="load-recipe-btn">Load Recipe</button>
@@ -54,17 +68,25 @@ export async function renderRecipes(container) {
 
   if (!document.body.contains(container)) return; // navigated away during fetch
 
-  const companySelect  = container.querySelector('#recipe-company');
-  const productSelect  = container.querySelector('#recipe-product');
-  if (!companySelect || !productSelect) return;
-  companies.forEach(c => companySelect.insertAdjacentHTML('beforeend', `<option value="${escHtml(c.company_id)}">${escHtml(c.company_name)}</option>`));
-  products.forEach(p => productSelect.insertAdjacentHTML('beforeend', `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
+  // Init searchable comboboxes
+  initCombobox(
+    container.querySelector('#recipe-company-text'),
+    container.querySelector('#recipe-company-val'),
+    container.querySelector('#company-dropdown'),
+    companies.map(c => ({ value: c.company_id, label: c.company_name }))
+  );
+  initCombobox(
+    container.querySelector('#recipe-product-text'),
+    container.querySelector('#recipe-product-val'),
+    container.querySelector('#product-dropdown'),
+    products.map(p => ({ value: p.product_id, label: p.product_name }))
+  );
 
   let currentCompanyId = '', currentProductId = '';
 
   container.querySelector('#load-recipe-btn')?.addEventListener('click', async () => {
-    currentCompanyId = companySelect.value;
-    currentProductId = productSelect.value;
+    currentCompanyId = container.querySelector('#recipe-company-val').value;
+    currentProductId = container.querySelector('#recipe-product-val').value;
     if (!currentCompanyId || !currentProductId) { toast.info('Please select both company and product.'); return; }
     await loadRecipe(currentCompanyId, currentProductId);
   });
@@ -205,6 +227,89 @@ async function copyRecipeFrom(toCompanyId, productId, companies, products, ingre
     toast.success(`Copied ${sourceRecipes.length} ingredients.`);
     clearDimCache();
   } catch (err) { toast.error(err.message); }
+}
+
+// ── Searchable combobox ───────────────────────────────────────
+// items = [{ value, label }]
+function initCombobox(textInput, hiddenInput, dropdown, items) {
+  if (!textInput || !hiddenInput || !dropdown) return;
+
+  const itemStyle = 'padding:0.5rem 0.75rem;font-size:0.875rem;cursor:pointer;border-bottom:1px solid #f3f4f6';
+
+  function renderDropdown(query) {
+    const q = query.trim().toLowerCase();
+    const filtered = q === ''
+      ? items
+      : items.filter(it => it.label.toLowerCase().includes(q));
+
+    if (filtered.length === 0) {
+      dropdown.innerHTML = `<div style="${itemStyle};color:var(--color-text-muted);cursor:default">No results found</div>`;
+    } else {
+      dropdown.innerHTML = filtered.map(it => {
+        // Bold the matching portion
+        const idx = it.label.toLowerCase().indexOf(q);
+        const highlighted = q && idx !== -1
+          ? escHtml(it.label.slice(0, idx))
+            + `<strong>${escHtml(it.label.slice(idx, idx + q.length))}</strong>`
+            + escHtml(it.label.slice(idx + q.length))
+          : escHtml(it.label);
+        return `<div class="combo-item" data-value="${escHtml(it.value)}" data-label="${escHtml(it.label)}"
+          style="${itemStyle}">${highlighted}</div>`;
+      }).join('');
+    }
+
+    dropdown.querySelectorAll('.combo-item').forEach(el => {
+      el.addEventListener('mouseenter', () => el.style.background = '#f0f9f6');
+      el.addEventListener('mouseleave', () => el.style.background = '');
+      el.addEventListener('mousedown', e => {
+        e.preventDefault(); // keep focus on input
+        hiddenInput.value = el.dataset.value;
+        textInput.value   = el.dataset.label;
+        closeDropdown();
+        textInput.dispatchEvent(new Event('combo:select'));
+      });
+    });
+  }
+
+  function openDropdown() {
+    renderDropdown(textInput.value);
+    dropdown.style.display = '';
+  }
+
+  function closeDropdown() {
+    dropdown.style.display = 'none';
+  }
+
+  textInput.addEventListener('focus',  () => openDropdown());
+  textInput.addEventListener('input',  () => {
+    hiddenInput.value = ''; // clear value if user edits text
+    renderDropdown(textInput.value);
+    dropdown.style.display = '';
+  });
+  textInput.addEventListener('blur', () => setTimeout(closeDropdown, 160));
+
+  // Keyboard: arrow up/down to navigate, Enter to select, Escape to close
+  textInput.addEventListener('keydown', e => {
+    const items = [...dropdown.querySelectorAll('.combo-item')];
+    const active = dropdown.querySelector('.combo-item--active');
+    let idx = items.indexOf(active);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (active) active.classList.remove('combo-item--active');
+      const next = items[Math.min(idx + 1, items.length - 1)];
+      if (next) { next.classList.add('combo-item--active'); next.style.background = '#f0f9f6'; next.scrollIntoView({ block: 'nearest' }); }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (active) active.classList.remove('combo-item--active');
+      const prev = items[Math.max(idx - 1, 0)];
+      if (prev) { prev.classList.add('combo-item--active'); prev.style.background = '#f0f9f6'; prev.scrollIntoView({ block: 'nearest' }); }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (active) { active.dispatchEvent(new MouseEvent('mousedown')); }
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  });
 }
 
 function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
