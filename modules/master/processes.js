@@ -101,7 +101,7 @@ export async function renderProcesses(container) {
     refreshFields(process.process_id);
   }
 
-  // ── Refresh process list ──────────────────────────────────
+  // ── Refresh process list (grouped by product as pipeline rows) ──
   async function refreshProcesses() {
     const filterProd = container.querySelector('#proc-product-filter')?.value || '';
     let allProcs = (await readAllRows(SHEETS.PROCESSES))
@@ -116,30 +116,44 @@ export async function renderProcesses(container) {
       return;
     }
 
-    list.innerHTML = `<ul class="process-list">
-      ${allProcs.map(p => `
-        <li class="process-item ${selectedProcess?.process_id === p.process_id ? 'process-item--active' : ''}"
-            data-id="${escHtml(p.process_id)}">
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <div class="process-item__seq">${escHtml(p.sequence_order)}</div>
-            <div class="process-item__name">${escHtml(p.process_name)}</div>
-          </div>
-          <div class="process-item__desc">
-            ${p.product_id
-              ? `<span class="badge badge--blue" style="font-size:0.7rem">${escHtml(prodMap[p.product_id] || p.product_id)}</span>`
-              : `<span class="badge badge--gray" style="font-size:0.7rem">All Products</span>`}
-            ${p.description ? `<span style="color:var(--color-text-muted);font-size:0.78rem">${escHtml(p.description)}</span>` : ''}
-          </div>
-          <div class="process-item__actions">
+    // Group by product_id (empty = "All Products / General")
+    const groups = new Map();
+    allProcs.forEach(p => {
+      const key = p.product_id || '__general__';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(p);
+    });
+
+    const rows = [...groups.entries()].map(([productKey, procs]) => {
+      const productName = productKey === '__general__'
+        ? 'General (All Products)'
+        : (prodMap[productKey] || productKey);
+
+      const steps = procs.map(p => `
+        <div class="pipeline-step ${selectedProcess?.process_id === p.process_id ? 'pipeline-step--active' : ''}"
+             data-id="${escHtml(p.process_id)}">
+          <div class="pipeline-step__seq">${escHtml(p.sequence_order)}</div>
+          <div class="pipeline-step__name">${escHtml(p.process_name)}</div>
+          ${p.description ? `<div class="pipeline-step__desc">${escHtml(p.description)}</div>` : ''}
+          <div class="pipeline-step__actions">
             ${statusBadge((p.is_active === 'TRUE' || p.is_active === true) ? 'Active' : 'Inactive')}
             ${canEdit ? `<button class="btn btn--xs btn--ghost" data-action="edit" title="Edit">✏</button>` : ''}
             <button class="btn btn--xs btn--primary" data-action="fields" title="Manage fields">⚙ Fields</button>
           </div>
-        </li>`).join('')}
-    </ul>`;
+        </div>`).join('<div class="pipeline-arrow">→</div>');
+
+      return `
+        <div class="pipeline-row">
+          <div class="pipeline-row__label">${escHtml(productName)}</div>
+          <div class="pipeline-row__steps">${steps}</div>
+        </div>`;
+    }).join('');
+
+    list.innerHTML = rows;
 
     list.querySelectorAll('[data-action="edit"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const id   = e.target.closest('[data-id]')?.dataset.id;
         const proc = allProcs.find(p => p.process_id === id);
         if (proc) openProcessForm(proc, refreshProcesses, products);
@@ -148,12 +162,12 @@ export async function renderProcesses(container) {
 
     list.querySelectorAll('[data-action="fields"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const id   = e.target.closest('[data-id]')?.dataset.id;
         const proc = allProcs.find(p => p.process_id === id);
         if (proc) openFieldEditor(proc);
-        // Highlight selected row
-        list.querySelectorAll('.process-item').forEach(li =>
-          li.classList.toggle('process-item--active', li.dataset.id === id));
+        list.querySelectorAll('.pipeline-step').forEach(el =>
+          el.classList.toggle('pipeline-step--active', el.dataset.id === id));
       });
     });
   }
