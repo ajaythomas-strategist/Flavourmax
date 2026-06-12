@@ -3,7 +3,8 @@
 // Role-aware nav, active route highlighting, mobile drawer
 // ============================================================
 
-import { getCurrentUser, hasPermission, logout } from '../auth.js';
+import { getCurrentUser, hasPermission, logout, changePassword } from '../auth.js';
+import { toast } from './toast.js';
 
 const NAV_ITEMS = [
   {
@@ -96,7 +97,10 @@ export function initSidebar(onNavigate) {
           <div class="sidebar__user-role">${escHtml(getCurrentUser()?.role || '')}</div>
         </div>
       </div>
-      <button class="btn btn--ghost btn--sm sidebar__logout" id="sidebar-logout" title="Logout">⏻</button>
+      <div style="display:flex;gap:.25rem">
+        <button class="btn btn--ghost btn--sm" id="sidebar-chgpwd" title="Change Password">🔑</button>
+        <button class="btn btn--ghost btn--sm sidebar__logout" id="sidebar-logout" title="Logout">⏻</button>
+      </div>
     </div>
   `;
 
@@ -136,6 +140,11 @@ export function initSidebar(onNavigate) {
     if (e.target.closest('[data-route]') && window.innerWidth <= 768) {
       closeMobileSidebar();
     }
+  });
+
+  // Change Password
+  document.getElementById('sidebar-chgpwd')?.addEventListener('click', () => {
+    showChangePasswordModal();
   });
 
   // Logout
@@ -265,6 +274,64 @@ export function setActiveRoute(route) {
 function getUserInitials() {
   const name = getCurrentUser()?.full_name || '?';
   return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function showChangePasswordModal() {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'fm-modal';
+  dialog.innerHTML = `
+    <div class="fm-modal__header">
+      <h2 class="fm-modal__title">Change Password</h2>
+    </div>
+    <form class="fm-modal__body" id="chgpwd-form" method="dialog" novalidate>
+      <div class="form-group">
+        <label for="chgpwd-current">Current Password</label>
+        <input type="password" id="chgpwd-current" autocomplete="current-password" required placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label for="chgpwd-new">New Password</label>
+        <input type="password" id="chgpwd-new" autocomplete="new-password" required placeholder="Min. 6 characters">
+      </div>
+      <div class="form-group">
+        <label for="chgpwd-confirm">Confirm New Password</label>
+        <input type="password" id="chgpwd-confirm" autocomplete="new-password" required placeholder="Re-enter new password">
+      </div>
+      <p id="chgpwd-error" style="color:var(--color-danger);font-size:0.85rem;min-height:1.2em"></p>
+    </form>
+    <div class="fm-modal__footer">
+      <button class="btn btn--ghost" id="chgpwd-cancel">Cancel</button>
+      <button class="btn btn--primary" id="chgpwd-submit">Update Password</button>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  const errEl = dialog.querySelector('#chgpwd-error');
+
+  dialog.querySelector('#chgpwd-cancel').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => setTimeout(() => dialog.remove(), 300));
+
+  dialog.querySelector('#chgpwd-submit').addEventListener('click', async () => {
+    const current = dialog.querySelector('#chgpwd-current').value;
+    const newPwd  = dialog.querySelector('#chgpwd-new').value;
+    const confirm = dialog.querySelector('#chgpwd-confirm').value;
+    errEl.textContent = '';
+
+    if (!current || !newPwd || !confirm) { errEl.textContent = 'All fields are required.'; return; }
+    if (newPwd !== confirm) { errEl.textContent = 'New passwords do not match.'; return; }
+    if (newPwd.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+
+    const btn = dialog.querySelector('#chgpwd-submit');
+    btn.disabled = true; btn.textContent = 'Updating…';
+    try {
+      await changePassword(current, newPwd);
+      dialog.close();
+      toast.success('Password updated successfully.');
+    } catch (err) {
+      errEl.textContent = err.message;
+      btn.disabled = false; btn.textContent = 'Update Password';
+    }
+  });
 }
 
 function escHtml(s) {

@@ -6,7 +6,7 @@ import { SHEETS, ROLES } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission, getCurrentUser } from '../../auth.js';
+import { hasPermission, getCurrentUser, resetUserPassword } from '../../auth.js';
 
 export async function renderUsers(container) {
   if (!hasPermission('users_manage')) {
@@ -40,9 +40,10 @@ export async function renderUsers(container) {
       ],
       data: users,
       actions: [
-        { key: 'edit',   label: 'Edit',   icon: '✏', class: 'btn--ghost',  handler: (row) => openForm(row, refresh) },
-        { key: 'toggle', label: 'Toggle', icon: '⏻', class: 'btn--ghost',  handler: (row) => toggleUser(row, refresh) },
-        { key: 'delete', label: 'Delete', icon: '🗑', class: 'btn--danger', handler: (row) => deleteUser(row, refresh) },
+        { key: 'edit',     label: 'Edit',           icon: '✏',  class: 'btn--ghost',  handler: (row) => openForm(row, refresh) },
+        { key: 'resetpwd', label: 'Reset Password',  icon: '🔑', class: 'btn--ghost',  handler: (row) => resetPwd(row) },
+        { key: 'toggle',   label: 'Toggle',          icon: '⏻',  class: 'btn--ghost',  handler: (row) => toggleUser(row, refresh) },
+        { key: 'delete',   label: 'Delete',          icon: '🗑',  class: 'btn--danger', handler: (row) => deleteUser(row, refresh) },
       ],
     });
   }
@@ -102,6 +103,27 @@ export async function renderUsers(container) {
       await hardDelete(SHEETS.USERS, row.user_id);
       toast.success(`User "${row.full_name}" deleted.`);
       await onSave();
+    } catch (err) { toast.error(err.message); }
+  }
+
+  async function resetPwd(row) {
+    const result = await formModal({
+      title: `Reset Password — ${row.full_name}`,
+      fields: [
+        { name: 'new_password',     label: 'New Password',     type: 'text', required: true, placeholder: 'Min. 6 characters' },
+        { name: 'confirm_password', label: 'Confirm Password', type: 'text', required: true, placeholder: 'Re-enter password' },
+      ],
+      data: {},
+      submitText: 'Reset Password',
+    });
+    if (!result) return;
+    if (result.new_password !== result.confirm_password) {
+      toast.error('Passwords do not match.');
+      return;
+    }
+    try {
+      await resetUserPassword(row.user_id, result.new_password);
+      toast.success(`Password reset for ${row.full_name}.`);
     } catch (err) { toast.error(err.message); }
   }
 }

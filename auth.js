@@ -4,7 +4,7 @@
 // ============================================================
 
 import { CONFIG, ROLES, PERMISSIONS, SHEETS } from './config.js';
-import { sheetsRead, setAccessToken, parseSheetRows } from './supabase-api.js';
+import { sheetsRead, setAccessToken, parseSheetRows, updateFullRow, findRowById } from './supabase-api.js';
 
 // ─── Session ─────────────────────────────────────────────────
 let _currentUser = null;
@@ -34,14 +34,15 @@ const DEMO_USERS = [
 
 export async function loginWithPassword(email, password) {
   // ── Demo mode bypass ─────────────────────────────────────────
+  // Fast-path for hardcoded admin; falls through to Supabase if password
+  // was changed via "Change Password" (which updates dim_users).
   const demoUser = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (demoUser) {
-    if (demoUser.password !== password) throw new Error('Incorrect password.');
+  if (demoUser && demoUser.password === password) {
     _currentUser = { user_id: demoUser.user_id, full_name: demoUser.full_name, email: demoUser.email, role: demoUser.role };
     persistSession(); startSessionTimer(); return _currentUser;
   }
 
-  // Read dim_users from Sheets
+  // Read dim_users from Supabase
   const values = await sheetsRead(`${SHEETS.USERS}!A:G`);
   const users = parseSheetRows(SHEETS.USERS, values);
   const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
@@ -50,7 +51,7 @@ export async function loginWithPassword(email, password) {
   if (user.is_active === 'FALSE' || user.is_active === false) throw new Error('Account is inactive.');
 
   const inputHash = await sha256(password);
-  // If no password set yet (first login), accept any and prompt change
+  // If no password set yet (first login), accept any
   if (user.password_hash && user.password_hash !== inputHash) {
     throw new Error('Incorrect password.');
   }
@@ -64,6 +65,51 @@ export async function loginWithPassword(email, password) {
   persistSession();
   startSessionTimer();
   return _currentUser;
+}
+
+// ─── Change Password (self-service) ──────────────────────────
+export async function changePassword(currentPassword, newPassword) {
+  if (!_currentUser) throw new Error('Not logged in.');
+  if (!newPassword || newPassword.length < 6) throw new Error('New password must be at least 6 characters.');
+
+  // Verify current password
+  const values = await sheetsRead(`${SHEETS.USERS}!A:G`);
+  const users  = parseSheetRows(SHEETS.USERS, values);
+  const user   = users.find(u => u.email?.toLowerCase() === _currentUser.email.toLowerCase());
+
+  if (user) {
+    // If a hash exists, verify it
+    if (user.password_hash) {
+      const currentHash = await sha256(currentPassword);
+      if (currentHash !== user.password_hash) throw new Error('Current password is incorrect.');
+    }
+    const newHash = await sha256(newPassword);
+    const rowId   = await findRowById(SHEETS.USERS, user.user_id);
+    await updateFullRow(SHEETS.USERS, rowId, { ...user, password_hash: newHash });
+  } else {
+    // DEMO_USERS admin — verify against hardcoded password
+    const demoUser = DEMO_USERS.find(u => u.email.toLowerCase() === _currentUser.email.toLowerCase());
+    if (!demoUser || demoUser.password !== currentPassword) {
+      throw new Error('Current password is incorrect.');
+    }
+    // Store new hashed password in dim_users so next login picks it up
+    const newHash = await sha256(newPassword);
+    // Try to find/update in Supabase; if not found, this is a no-op for the demo user
+    const rowId = await findRowById(SHEETS.USERS, demoUser.user_id);
+    if (rowId) {
+      await updateFullRow(SHEETS.USERS, rowId, { password_hash: newHash, updated_at: new Date().toISOString() });
+    }
+  }
+}
+
+// ─── Reset Password (admin resets for any user) ───────────────
+export async function resetUserPassword(userId, newPassword) {
+  if (!_currentUser || _currentUser.role !== 'Admin') throw new Error('Admin only.');
+  if (!newPassword || newPassword.length < 6) throw new Error('Password must be at least 6 characters.');
+  const newHash = await sha256(newPassword);
+  const rowId   = await findRowById(SHEETS.USERS, userId);
+  if (!rowId) throw new Error('User not found in database.');
+  await updateFullRow(SHEETS.USERS, rowId, { password_hash: newHash, updated_at: new Date().toISOString() });
 }
 
 // ─── Google OAuth Login ───────────────────────────────────────
