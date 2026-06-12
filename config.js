@@ -6,7 +6,7 @@
 export const CONFIG = {
   // ── Supabase (active backend) ──────────────────────────────
   SUPABASE_URL:      'https://pyuozhqagmvjztfybwje.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_3vcffKUkqqz2i6ZWv7_8Xg_iejdkHo3',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5dW96aHFhZ212anp0Znlid2plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTAxNzIsImV4cCI6MjA5Njc2NjE3Mn0.C1NvhEloeRuO5ZpIGFrrkBUohZomWMaYhtiiPu4KPLQ',
 
   // ── Google Sheets (legacy — no longer used) ────────────────
   WEBAPP_URL:     '',  // Disabled after Supabase migration
