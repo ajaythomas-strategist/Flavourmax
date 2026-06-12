@@ -4,12 +4,13 @@
 import { readAllRows, sheetsBatchRead, parseSheetRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache, activeOnly } from '../../supabase-api.js';
 import { SHEETS, FIELD_TYPES } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
-import { formModal, confirm, contentModal } from '../../components/modal.js';
+import { formModal, confirm, alert, contentModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
 import { hasPermission } from '../../auth.js';
 
 export async function renderProcesses(container) {
-  const canEdit = hasPermission('master_edit');
+  const canEditProcess = hasPermission('master_edit');
+  const canEditFields  = hasPermission('process_fields_edit');
 
   container.innerHTML = `
     <div class="page-header">
@@ -17,7 +18,7 @@ export async function renderProcesses(container) {
         <h1 class="page-title">Processes & Fields</h1>
         <p class="page-subtitle">Configure per-product production processes and their dynamic form fields</p>
       </div>
-      ${canEdit ? `<button class="btn btn--primary" id="add-proc-btn">+ Add Process</button>` : ''}
+      ${canEditProcess ? `<button class="btn btn--primary" id="add-proc-btn">+ Add Process</button>` : ''}
     </div>
     <div style="margin-bottom:1rem;display:flex;align-items:center;gap:.75rem">
       <label style="font-weight:600;font-size:0.875rem">Filter by Product:</label>
@@ -34,7 +35,7 @@ export async function renderProcesses(container) {
         <div class="card__header">
           <h3 class="card__title" id="field-editor-title">Process Fields</h3>
           <div class="card__header-actions">
-            ${canEdit ? `<button class="btn btn--sm btn--primary" id="add-field-btn">+ Add Field</button>` : ''}
+            ${canEditFields ? `<button class="btn btn--sm btn--primary" id="add-field-btn">+ Add Field</button>` : ''}
             <button class="btn btn--sm btn--ghost" id="preview-form-btn">👁 Preview</button>
             <button class="btn btn--sm btn--ghost" id="close-fields-btn">✕</button>
           </div>
@@ -60,7 +61,7 @@ export async function renderProcesses(container) {
   products.forEach(p => filterSelect.insertAdjacentHTML('beforeend',
     `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
 
-  if (canEdit) {
+  if (canEditProcess) {
     container.querySelector('#add-proc-btn')?.addEventListener('click', () =>
       openProcessForm(null, refreshProcesses, products));
   }
@@ -146,7 +147,8 @@ export async function renderProcesses(container) {
 
         stepsHtml += `
           <div data-id="${escHtml(p.process_id)}"
-               style="display:flex;flex-direction:column;width:170px;flex-shrink:0;
+               style="display:flex;flex-direction:column;width:170px;min-width:170px;flex-shrink:0;
+                      min-height:130px;
                       border-radius:12px;
                       border:1.5px solid ${isSelected ? 'var(--color-primary)' : '#e2e8ec'};
                       background:${isSelected ? '#eaf4f2' : '#fff'};
@@ -154,10 +156,10 @@ export async function renderProcesses(container) {
                       overflow:hidden;cursor:pointer;
                       transition:border-color .15s,box-shadow .15s">
             <!-- Step header -->
-            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px 6px">
-              <div style="width:22px;height:22px;background:var(--color-primary);color:#fff;
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
+              <div style="width:22px;height:22px;min-width:22px;background:var(--color-primary);color:#fff;
                           border-radius:50%;display:flex;align-items:center;justify-content:center;
-                          font-size:10px;font-weight:800;flex-shrink:0">${escHtml(p.sequence_order)}</div>
+                          font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px">${escHtml(p.sequence_order)}</div>
               <div style="font-weight:700;font-size:0.8rem;line-height:1.3;color:#1a2e2a">${escHtml(p.process_name)}</div>
             </div>
             <!-- Description -->
@@ -173,10 +175,10 @@ export async function renderProcesses(container) {
                            padding:2px 7px;border-radius:20px">
                 ${isActive ? 'Active' : 'Inactive'}
               </span>
-              ${canEdit ? `<button class="btn btn--xs btn--ghost" data-action="edit"
+              ${canEditProcess ? `<button class="btn btn--xs btn--ghost" data-action="edit"
                 style="padding:2px 6px;font-size:0.7rem;margin-left:auto" title="Edit">✏</button>` : ''}
               <button class="btn btn--xs btn--primary" data-action="fields"
-                style="padding:2px 8px;font-size:0.7rem${!canEdit ? ';margin-left:auto' : ''}" title="Fields">⚙ Fields</button>
+                style="padding:2px 8px;font-size:0.7rem${!canEditProcess ? ';margin-left:auto' : ''}" title="Fields">⚙ Fields</button>
             </div>
           </div>`;
       });
@@ -254,11 +256,12 @@ export async function renderProcesses(container) {
             </div>
             ${f.field_options ? `<div class="field-item__opts" style="font-size:0.78rem;color:var(--color-text-muted);margin-top:.2rem">Options: ${escHtml(f.field_options)}</div>` : ''}
           </div>
-          ${canEdit ? `<div class="field-item__actions">
-            <button class="btn btn--xs btn--ghost" data-field-edit="${escHtml(f.field_id)}">✏</button>
+          ${canEditFields ? `<div class="field-item__actions">
+            <button class="btn btn--xs btn--ghost" data-field-edit="${escHtml(f.field_id)}" title="Edit">✏</button>
             <button class="btn btn--xs btn--ghost" data-field-toggle="${escHtml(f.field_id)}" title="${(f.is_active === 'TRUE' || f.is_active === true) ? 'Deactivate' : 'Activate'}">
               ${(f.is_active === 'TRUE' || f.is_active === true) ? '⏸' : '▶'}
             </button>
+            <button class="btn btn--xs btn--danger" data-field-delete="${escHtml(f.field_id)}" title="Delete">🗑</button>
           </div>` : ''}
         </div>`).join('')}
     </div>`;
@@ -276,6 +279,27 @@ export async function renderProcesses(container) {
           const isActive = fld.is_active === 'TRUE' || fld.is_active === true;
           await updateFullRow(SHEETS.PROCESS_FIELDS, rowNum, { ...fld, is_active: isActive ? 'FALSE' : 'TRUE' });
           toast.success('Field status updated.');
+          clearDimCache();
+          await refreshFields(processId);
+        } catch (err) { toast.error(err.message); }
+      });
+    });
+
+    list.querySelectorAll('[data-field-delete]').forEach(btn => {
+      const fld = fields.find(f => f.field_id === btn.dataset.fieldDelete);
+      btn.addEventListener('click', async () => {
+        const ok = await confirm({
+          title: 'Delete Field',
+          message: `Permanently delete "${fld.field_label}"? This cannot be undone and will remove this field from all future process forms.`,
+          confirmText: 'Delete',
+          confirmClass: 'btn--danger',
+        });
+        if (!ok) return;
+        try {
+          const rowNum = await findRowById(SHEETS.PROCESS_FIELDS, fld.field_id);
+          // Hard-delete by marking inactive and using a tombstone flag
+          await updateFullRow(SHEETS.PROCESS_FIELDS, rowNum, { ...fld, is_active: 'FALSE', field_label: `[DELETED] ${fld.field_label}` });
+          toast.success('Field deleted.');
           clearDimCache();
           await refreshFields(processId);
         } catch (err) { toast.error(err.message); }
