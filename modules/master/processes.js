@@ -120,15 +120,15 @@ export async function renderProcesses(container) {
       ${allProcs.map(p => `
         <li class="process-item ${selectedProcess?.process_id === p.process_id ? 'process-item--active' : ''}"
             data-id="${escHtml(p.process_id)}">
-          <div class="process-item__seq">${escHtml(p.sequence_order)}</div>
-          <div class="process-item__info">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <div class="process-item__seq">${escHtml(p.sequence_order)}</div>
             <div class="process-item__name">${escHtml(p.process_name)}</div>
-            <div class="process-item__desc" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-              ${p.product_id
-                ? `<span class="badge badge--blue" style="font-size:0.7rem">${escHtml(prodMap[p.product_id] || p.product_id)}</span>`
-                : `<span class="badge badge--gray" style="font-size:0.7rem">All Products</span>`}
-              <span style="color:var(--color-text-muted);font-size:0.8rem">${escHtml(p.description || '')}</span>
-            </div>
+          </div>
+          <div class="process-item__desc">
+            ${p.product_id
+              ? `<span class="badge badge--blue" style="font-size:0.7rem">${escHtml(prodMap[p.product_id] || p.product_id)}</span>`
+              : `<span class="badge badge--gray" style="font-size:0.7rem">All Products</span>`}
+            ${p.description ? `<span style="color:var(--color-text-muted);font-size:0.78rem">${escHtml(p.description)}</span>` : ''}
           </div>
           <div class="process-item__actions">
             ${statusBadge((p.is_active === 'TRUE' || p.is_active === true) ? 'Active' : 'Inactive')}
