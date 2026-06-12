@@ -4,7 +4,7 @@
 import { restoreSession, loginWithPassword, isLoggedIn, getCurrentUser } from './auth.js';
 import { initSidebar, setActiveRoute } from './components/sidebar.js';
 import { initToasts, toast } from './components/toast.js';
-import { loadDimCache } from './sheets-api.js';
+import { loadDimCache } from './supabase-api.js';
 
 // ─── Route Map ───────────────────────────────────────────────
 const ROUTES = {
@@ -166,7 +166,7 @@ async function bootstrap() {
     document.getElementById('fm-sidebar').innerHTML = '';
   });
 
-  // Listen for cross-module toast events (e.g. from sheets-api.js)
+  // Listen for cross-module toast events (e.g. from supabase-api.js)
   window.addEventListener('fm:toast', (e) => {
     const { type, message } = e.detail || {};
     if (type && message) toast[type]?.(message);

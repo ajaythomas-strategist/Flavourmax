@@ -1,7 +1,7 @@
 // ============================================================
 // modules/settings/users.js — User Management (Admin Only)
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, hardDelete } from '../../sheets-api.js';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, hardDelete } from '../../supabase-api.js';
 import { SHEETS, ROLES } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';

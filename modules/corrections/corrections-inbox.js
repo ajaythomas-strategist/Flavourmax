@@ -2,7 +2,7 @@
 // modules/corrections/corrections-inbox.js
 // Correction workflow — raise, approve, reject, history
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, sheetsRead, parseSheetRows, sheetsBatchRead } from '../../sheets-api.js';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, parseSheetRows, sheetsBatchRead, readRowByNumber } from '../../supabase-api.js';
 import { SHEETS, COLUMNS } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';
@@ -87,13 +87,12 @@ export async function raiseCorrection({ sheetName, recordId, fieldName, currentV
   try {
     const id  = await generateId(SHEETS.CORRECTIONS);
     const now = new Date().toISOString();
-    
-    // Get old value
-    const rowNum = await findRowById(sheetName, recordId);
+
+    // Get old value — findRowById returns the ID itself in Supabase mode
+    const rowId = await findRowById(sheetName, recordId);
     let oldValue = '';
-    if (rowNum > 0) {
-      const { readRowByNumber } = await import('../../sheets-api.js');
-      const rowData = await readRowByNumber(sheetName, rowNum);
+    if (rowId) {
+      const rowData = await readRowByNumber(sheetName, rowId);
       if (sheetName === SHEETS.PROCESS_LOG) {
         const jsonIdx = (COLUMNS[sheetName] || []).indexOf('field_data_json');
         const jsonStr = rowData[jsonIdx >= 0 ? jsonIdx : 5] || '{}';
@@ -128,47 +127,40 @@ async function approveCorrection(correction, onDone) {
   });
   if (!ok) return;
   try {
-    // Apply to source sheet
     const sheetName = correction.source_sheet;
-    const cols = COLUMNS[sheetName] || [];
-    const rowNum = await findRowById(sheetName, correction.source_row_id);
-    if (rowNum < 0) throw new Error('Source record not found. It may have been moved.');
 
-    const { sheetsRead: _read, sheetsUpdate: _update } = await import('../../sheets-api.js');
-    const lastCol = String.fromCharCode(65 + cols.length - 1);
-    const existing = await _read(`${sheetName}!A${rowNum}:${lastCol}${rowNum}`);
-    const rowArr = existing[0] || [];
+    // Read the full record from Supabase
+    const records = await readAllRows(sheetName);
+    const pkCol = COLUMNS[sheetName]?.[0] || 'id';
+    const record = records.find(r => String(r[pkCol]) === String(correction.source_row_id));
+    if (!record) throw new Error('Source record not found. It may have been deleted.');
+
+    // Build updated record
+    const updatedRecord = { ...record };
 
     if (sheetName === SHEETS.PROCESS_LOG) {
-      const jsonIdx = cols.indexOf('field_data_json');
-      const isCorrIdx = cols.indexOf('is_corrected');
-      const corrRefIdx = cols.indexOf('correction_ref_id');
       let fieldData = {};
-      try {
-        fieldData = JSON.parse(rowArr[jsonIdx >= 0 ? jsonIdx : 5] || '{}');
-      } catch(e) {}
+      try { fieldData = JSON.parse(record.field_data_json || '{}'); } catch(e) {}
       fieldData[correction.field_name] = correction.new_value;
-      if (jsonIdx >= 0) rowArr[jsonIdx] = JSON.stringify(fieldData);
-      if (isCorrIdx >= 0) rowArr[isCorrIdx] = 'TRUE';
-      if (corrRefIdx >= 0) rowArr[corrRefIdx] = correction.correction_id;
+      updatedRecord.field_data_json = JSON.stringify(fieldData);
+      updatedRecord.is_corrected = true;
+      updatedRecord.correction_ref_id = correction.correction_id;
     } else {
-      const colIdx = cols.indexOf(correction.field_name);
-      if (colIdx < 0) throw new Error(`Column "${correction.field_name}" not found in ${sheetName}`);
-      rowArr[colIdx] = correction.new_value;
-
-      // Update is_corrected and correction_ref_id if columns exist in target schema
-      const isCorrIdx = cols.indexOf('is_corrected');
-      const corrRefIdx = cols.indexOf('correction_ref_id');
-      if (isCorrIdx >= 0) rowArr[isCorrIdx] = 'TRUE';
-      if (corrRefIdx >= 0) rowArr[corrRefIdx] = correction.correction_id;
+      updatedRecord[correction.field_name] = correction.new_value;
+      if ('is_corrected' in record) updatedRecord.is_corrected = true;
+      if ('correction_ref_id' in record) updatedRecord.correction_ref_id = correction.correction_id;
     }
 
-    await _update(`${sheetName}!A${rowNum}:${lastCol}${rowNum}`, [rowArr]);
+    // Apply update to source table
+    await updateFullRow(sheetName, correction.source_row_id, updatedRecord);
 
-    // Update correction record
-    const corrRowNum = await findRowById(SHEETS.CORRECTIONS, correction.correction_id);
-    await updateFullRow(SHEETS.CORRECTIONS, corrRowNum, {
-      ...correction, status: 'Approved', reviewed_by: getCurrentUser()?.user_id, reviewed_at: new Date().toISOString(), review_note: 'Approved'
+    // Mark correction as Approved
+    await updateFullRow(SHEETS.CORRECTIONS, correction.correction_id, {
+      ...correction,
+      status: 'Approved',
+      reviewed_by: getCurrentUser()?.user_id,
+      reviewed_at: new Date().toISOString(),
+      review_note: 'Approved'
     });
     toast.success('Correction approved and applied.');
     await onDone();
@@ -184,9 +176,12 @@ async function rejectCorrection(correction, onDone) {
   });
   if (!result) return;
   try {
-    const corrRowNum = await findRowById(SHEETS.CORRECTIONS, correction.correction_id);
-    await updateFullRow(SHEETS.CORRECTIONS, corrRowNum, {
-      ...correction, status: 'Rejected', reviewed_by: getCurrentUser()?.user_id, reviewed_at: new Date().toISOString(), review_note: result.note
+    await updateFullRow(SHEETS.CORRECTIONS, correction.correction_id, {
+      ...correction,
+      status: 'Rejected',
+      reviewed_by: getCurrentUser()?.user_id,
+      reviewed_at: new Date().toISOString(),
+      review_note: result.note
     });
     toast.warning('Correction rejected.');
     await onDone();

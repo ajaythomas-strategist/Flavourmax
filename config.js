@@ -4,10 +4,15 @@
 // ============================================================
 
 export const CONFIG = {
-  WEBAPP_URL:     'https://script.google.com/macros/s/AKfycbyAekAEkZxDNr5ZN92I9qW-4ZbbmoF-bWbfqB4fCQ32Rh83bHcoloY9cG4Ib24qy1rK6w/exec',  // Google Apps Script Web App /exec URL (primary backend)
-  SPREADSHEET_ID: '1LYLL-UecZ33zURiD2YHfXXhxN28dOYJE27DkzzL4vqM', // Only needed if NOT using Web App URL (fallback mode)
-  API_KEY: '',        // Only needed in fallback mode
-  CLIENT_ID: '',      // Google OAuth 2.0 Client ID (optional)
+  // ── Supabase (active backend) ──────────────────────────────
+  SUPABASE_URL:      'https://pyuozhqagmvjztfybwje.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_3vcffKUkqqz2i6ZWv7_8Xg_iejdkHo3',
+
+  // ── Google Sheets (legacy — no longer used) ────────────────
+  WEBAPP_URL:     '',  // Disabled after Supabase migration
+  SPREADSHEET_ID: '1LYLL-UecZ33zURiD2YHfXXhxN28dOYJE27DkzzL4vqM',
+  API_KEY: '',
+  CLIENT_ID: '',
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets',
   SHEETS_API_BASE: 'https://sheets.googleapis.com/v4/spreadsheets',
   SESSION_TIMEOUT_MS: 2 * 60 * 60 * 1000, // 2 hours

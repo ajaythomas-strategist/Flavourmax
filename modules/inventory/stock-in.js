@@ -2,7 +2,7 @@
 // modules/inventory/stock-in.js — Inventory In (Stock Receipt)
 // Desktop: horizontal table  |  Mobile: vertical card form
 // ============================================================
-import { sheetsAppend, generateId, updateInventoryBalance, sheetsBatchRead, parseSheetRows, activeOnly } from '../../sheets-api.js';
+import { sheetsAppend, generateId, updateInventoryBalance, sheetsBatchRead, parseSheetRows, activeOnly } from '../../supabase-api.js';
 import { SHEETS } from '../../config.js';
 import { DataTable } from '../../components/data-table.js';
 import { toast } from '../../components/toast.js';

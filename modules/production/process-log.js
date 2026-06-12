@@ -2,7 +2,7 @@
 // modules/production/process-log.js — Dynamic Process Logging
 // Sequential Process Stepper with Input/Output Tracking
 // ============================================================
-import { sheetsAppend, findRowById, updateFullRow, generateId, sheetsBatchRead, parseSheetRows, readAllRows, activeOnly } from '../../sheets-api.js';
+import { sheetsAppend, findRowById, updateFullRow, generateId, sheetsBatchRead, parseSheetRows, readAllRows, activeOnly } from '../../supabase-api.js';
 import { SHEETS, BATCH_STATUS } from '../../config.js';
 import { toast } from '../../components/toast.js';
 import { confirm, alert, formModal } from '../../components/modal.js';
@@ -300,7 +300,7 @@ export async function renderProcessLog(container, params = {}) {
       if (!res) return;
       try {
         const rowNum = await findRowById(SHEETS.PRODUCTION_BATCHES, batchId);
-        if (rowNum > 0) {
+        if (rowNum) {
           await updateFullRow(SHEETS.PRODUCTION_BATCHES, rowNum, {
             ...batch, status: BATCH_STATUS.COMPLETED,
             actual_qty: res.actual_qty, updated_at: new Date().toISOString()
@@ -320,7 +320,7 @@ export async function renderProcessLog(container, params = {}) {
       if (!res) return;
       try {
         const rowNum = await findRowById(SHEETS.PRODUCTION_BATCHES, batchId);
-        if (rowNum > 0) {
+        if (rowNum) {
           const now = new Date().toISOString();
           await updateFullRow(SHEETS.PRODUCTION_BATCHES, rowNum, {
             ...batch, status: BATCH_STATUS.CANCELLED,
@@ -330,7 +330,7 @@ export async function renderProcessLog(container, params = {}) {
           for (const l of logs) {
             if (l.step_status !== 'Completed') {
               const logRowNum = await findRowById(SHEETS.PROCESS_LOG, l.log_id);
-              if (logRowNum > 0) {
+              if (logRowNum) {
                 await updateFullRow(SHEETS.PROCESS_LOG, logRowNum, {
                   ...l, step_status: 'Cancelled',
                   completed_at: now, completed_by: getCurrentUser()?.full_name || 'System'
@@ -429,7 +429,7 @@ async function startProcessStep(batchId, procId) {
   const log  = logs.find(l => l.batch_id === batchId && l.process_id === procId);
   if (log && log.step_status === 'Active') {
     const rowNum = await findRowById(SHEETS.PROCESS_LOG, log.log_id);
-    if (rowNum > 0) {
+    if (rowNum) {
       await updateFullRow(SHEETS.PROCESS_LOG, rowNum, {
         ...log, step_status: 'In Progress', started_at: new Date().toISOString()
       });
@@ -469,7 +469,7 @@ async function saveFormDraft(form, fields, isAutosave = false) {
     const log = allLogs.find(l => l.log_id === logId);
     if (log) {
       const rowNum = await findRowById(SHEETS.PROCESS_LOG, logId);
-      if (rowNum > 0) {
+      if (rowNum) {
         await updateFullRow(SHEETS.PROCESS_LOG, rowNum, {
           ...log,
           field_data_json: JSON.stringify(data),
@@ -515,7 +515,7 @@ async function completeProcessStep(batchId, procId, form, fields, logs, processe
 
   const logRowNum = await findRowById(SHEETS.PROCESS_LOG, logId);
   const log = logs.find(l => l.log_id === logId);
-  if (logRowNum > 0 && log) {
+  if (logRowNum && log) {
     await updateFullRow(SHEETS.PROCESS_LOG, logRowNum, {
       ...log,
       step_status:     'Completed',
@@ -535,7 +535,7 @@ async function completeProcessStep(batchId, procId, form, fields, logs, processe
       const nextLog  = logs.find(l => l.process_id === nextProc.process_id);
       if (nextLog && nextLog.step_status === 'Locked') {
         const nextLogRowNum = await findRowById(SHEETS.PROCESS_LOG, nextLog.log_id);
-        if (nextLogRowNum > 0) {
+        if (nextLogRowNum) {
           await updateFullRow(SHEETS.PROCESS_LOG, nextLogRowNum, {
             ...nextLog, step_status: 'Active', started_at: now
           });

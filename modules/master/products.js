@@ -1,7 +1,7 @@
 // ============================================================
 // modules/master/products.js — Product Management
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, getDimCache, clearDimCache } from '../../sheets-api.js';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, getDimCache, clearDimCache } from '../../supabase-api.js';
 import { SHEETS } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal } from '../../components/modal.js';

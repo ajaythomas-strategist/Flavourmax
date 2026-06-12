@@ -4,7 +4,7 @@
 // ============================================================
 
 import { CONFIG, ROLES, PERMISSIONS, SHEETS } from './config.js';
-import { sheetsRead, setAccessToken, parseSheetRows } from './sheets-api.js';
+import { sheetsRead, setAccessToken, parseSheetRows } from './supabase-api.js';
 
 // ─── Session ─────────────────────────────────────────────────
 let _currentUser = null;

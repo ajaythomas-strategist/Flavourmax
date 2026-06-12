@@ -2,7 +2,7 @@
 // modules/master/companies.js — Company Management
 // ============================================================
 import { readAllRows, sheetsAppend, findRowById, updateFullRow, softDelete,
-         generateId, getDimCache, clearDimCache, loadDimCache } from '../../sheets-api.js';
+         generateId, getDimCache, clearDimCache, loadDimCache } from '../../supabase-api.js';
 import { SHEETS } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';
@@ -72,7 +72,7 @@ async function openCompanyForm(data, onSave) {
     const now = new Date().toISOString();
     if (data) {
       const rowNum = await findRowById(SHEETS.COMPANIES, data.company_id);
-      if (rowNum < 0) throw new Error('Record not found');
+      if (!rowNum) throw new Error('Record not found');
       await updateFullRow(SHEETS.COMPANIES, rowNum, { ...data, ...result, updated_at: now });
       toast.success('Company updated successfully.');
     } else {

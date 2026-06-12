@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flavourmax — Migrate Data to Supabase</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; padding: 2rem; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
+  .card { background: white; border-radius: 10px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
+  h2 { font-size: 1rem; margin-bottom: 1rem; color: #333; }
+  label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem; color: #555; }
+  input, textarea { width: 100%; border: 1px solid #ddd; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.9rem; margin-bottom: 1rem; }
+  textarea { font-family: monospace; font-size: 0.8rem; height: 120px; resize: vertical; }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn--primary { background: #5b6af7; color: white; }
+  .btn--success { background: #22c55e; color: white; }
+  .btn--danger  { background: #ef4444; color: white; }
+  .btn--ghost   { background: #f0f0f0; color: #333; }
+  .status-list { list-style: none; max-height: 400px; overflow-y: auto; }
+  .status-list li { padding: 0.4rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot--pending  { background: #d1d5db; }
+  .dot--running  { background: #f59e0b; }
+  .dot--done     { background: #22c55e; }
+  .dot--error    { background: #ef4444; }
+  .dot--skip     { background: #a3a3a3; }
+  .progress-bar-wrap { background: #e5e7eb; border-radius: 99px; height: 8px; margin: 1rem 0; overflow: hidden; }
+  .progress-bar { height: 100%; background: #5b6af7; border-radius: 99px; transition: width 0.3s; }
+  .summary-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem; margin-top: 1rem; display: none; }
+  .summary-box.error { background: #fef2f2; border-color: #fecaca; }
+  .step-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .steps { display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: #999; }
+  .steps .active { color: #5b6af7; font-weight: 600; }
+  .tip { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.82rem; color: #1d4ed8; margin-bottom: 1rem; }
+  .tip strong { display: block; margin-bottom: 0.2rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f9fafb; font-weight: 600; }
+  .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+  .badge--green  { background: #dcfce7; color: #15803d; }
+  .badge--red    { background: #fee2e2; color: #b91c1c; }
+  .badge--yellow { background: #fef9c3; color: #a16207; }
+  #section-step2, #section-step3 { display: none; }
+</style>
+</head>
+<body>
+
+<h1>🚀 Flavourmax Data Migration</h1>
+<p class="subtitle">Migrate existing data from Google Sheets → Supabase</p>
+
+<!-- STEP 1: Credentials -->
+<div class="card" id="section-step1">
+  <div class="step-header">
+    <h2>Step 1 — Enter Credentials</h2>
+    <div class="steps">
+      <span class="active">1 Credentials</span> → <span>2 Preview</span> → <span>3 Migrate</span>
+    </div>
+  </div>
+
+  <div class="tip">
+    <strong>Before you begin:</strong>
+    Run <code>supabase-schema.sql</code> in the Supabase SQL Editor, and disable RLS on all tables.
+    Then paste your credentials below.
+  </div>
+
+  <label>Supabase Project URL</label>
+  <input type="text" id="sb-url" value="https://pyuozhqagmvjztfybwje.supabase.co" placeholder="https://xxxx.supabase.co">
+
+  <label>Supabase Anon Key (from Dashboard → Settings → API Keys → anon/public)</label>
+  <input type="text" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+
+  <label>Google Apps Script Web App URL (your existing backend)</label>
+  <input type="text" id="webapp-url"
+    value="https://script.google.com/macros/s/AKfycbyAekAEkZxDNr5ZN92I9qW-4ZbbmoF-bWbfqB4fCQ32Rh83bHcoloY9cG4Ib24qy1rK6w/exec"
+    placeholder="https://script.google.com/macros/s/...">
+
+  <button class="btn btn--primary" onclick="loadPreview()">Next: Preview Data →</button>
+</div>
+
+<!-- STEP 2: Preview -->
+<div class="card" id="section-step2">
+  <div class="step-header">
+    <h2>Step 2 — Preview</h2>
+    <div class="steps">
+      <span>1 Credentials</span> → <span class="active">2 Preview</span> → <span>3 Migrate</span>
+    </div>
+  </div>
+  <p style="font-size:0.85rem;color:#555;margin-bottom:1rem;">Fetched row counts from Google Sheets. Review before migrating.</p>
+  <div id="preview-table-wrap"></div>
+  <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <button class="btn btn--ghost" onclick="backToStep1()">← Back</button>
+    <button class="btn btn--success" id="start-migrate-btn" onclick="startMigration()">Start Migration →</button>
+  </div>
+</div>
+
+<!-- STEP 3: Migration progress -->
+<div class="card" id="section-step3">
+  <div class="step-header">
+    <h2>Step 3 — Migrating</h2>
+    <div class="steps">
+      <span>1 Credentials</span> → <span>2 Preview</span> → <span class="active">3 Migrate</span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+  <div style="font-size:0.82rem;color:#666;margin-bottom:1rem;" id="progress-label">Starting…</div>
+
+  <ul class="status-list" id="status-list"></ul>
+
+  <div class="summary-box" id="summary-box"></div>
+
+  <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <button class="btn btn--ghost" id="back-btn-step3" onclick="backToStep1()" style="display:none;">← Start Over</button>
+    <button class="btn btn--primary" id="done-btn" onclick="window.location='index.html'" style="display:none;">Open App →</button>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const SHEETS = {
+  COMPANIES:'dim_companies', PRODUCTS:'dim_products', CATEGORIES:'dim_categories',
+  INGREDIENTS:'dim_ingredients', UNITS:'dim_units', PROCESSES:'dim_processes',
+  PROCESS_FIELDS:'dim_process_fields', RECIPES:'dim_recipes', USERS:'dim_users',
+  WAREHOUSES:'dim_warehouses', SUPPLIERS:'dim_suppliers',
+  INVENTORY_IN:'fact_inventory_in', INVENTORY_OUT:'fact_inventory_out',
+  INVENTORY_BALANCE:'fact_inventory_balance', PRODUCTION_BATCHES:'fact_production_batches',
+  PROCESS_LOG:'fact_production_process_log', DISPATCH:'fact_dispatch',
+  SALES:'fact_sales', SALES_RETURN:'fact_sales_return', CORRECTIONS:'fact_corrections'
+};
+
+const COLUMNS = {
+  dim_companies:       ['company_id','company_name','contact_person','phone','email','address','gstin','is_active','created_at','updated_at'],
+  dim_products:        ['product_id','product_name','category_id','default_unit_id','description','is_active','created_at','updated_at'],
+  dim_categories:      ['category_id','category_name','description','is_active','created_at'],
+  dim_ingredients:     ['ingredient_id','ingredient_name','unit_id','category','min_stock_alert','is_active','created_at','updated_at'],
+  dim_units:           ['unit_id','unit_name','abbreviation','is_active','created_at'],
+  dim_processes:       ['process_id','product_id','process_name','sequence_order','description','is_active','created_at'],
+  dim_process_fields:  ['field_id','process_id','field_name','field_label','field_type','field_options','is_required','sequence_order','is_active'],
+  dim_recipes:         ['recipe_id','company_id','product_id','ingredient_id','quantity','unit_id','notes','is_active','created_at','updated_at'],
+  dim_users:           ['user_id','full_name','email','role','password_hash','is_active','created_at'],
+  dim_warehouses:      ['warehouse_id','warehouse_name','location','is_active','created_at'],
+  dim_suppliers:       ['supplier_id','supplier_name','contact_person','phone','email','address','is_active','created_at','updated_at'],
+  fact_inventory_in:   ['in_id','in_date','ingredient_id','supplier','quantity','unit_id','rate','total_cost','warehouse_id','invoice_no','notes','created_by','created_at'],
+  fact_inventory_out:  ['out_id','out_date','ingredient_id','batch_id','quantity','unit_id','reason','created_by','created_at'],
+  fact_inventory_balance: ['balance_id','ingredient_id','total_in','total_out','current_balance','last_updated'],
+  fact_production_batches: ['batch_id','batch_date','product_id','company_id','planned_qty','actual_qty','unit_id','status','notes','created_by','created_at','updated_at'],
+  fact_production_process_log: ['log_id','batch_id','process_id','process_name','step_status','field_data_json','input_qty','input_unit','output_qty','output_unit','started_at','completed_at','completed_by','is_corrected','correction_ref_id'],
+  fact_dispatch:       ['dispatch_id','dispatch_date','company_id','product_id','batch_id','quantity','unit_id','vehicle_no','driver_name','notes','status','created_by','created_at'],
+  fact_sales:          ['sale_id','invoice_no','sale_date','company_id','product_id','batch_id','quantity','unit_id','rate','amount','gst_percent','gst_amount','total_amount','status','created_by','created_at'],
+  fact_sales_return:   ['return_id','return_date','sale_id','company_id','product_id','quantity','reason','status','created_by','created_at'],
+  fact_corrections:    ['correction_id','requested_at','requested_by','source_sheet','source_row_id','field_name','field_label','old_value','new_value','reason','status','reviewed_by','reviewed_at','review_note'],
+};
+
+const BOOL_COLS = ['is_active','is_required','is_corrected'];
+const NUMERIC_COLS = ['quantity','rate','total_cost','planned_qty','actual_qty','total_in','total_out','current_balance','min_stock_alert','gst_percent','gst_amount','amount','total_amount','sequence_order','input_qty','output_qty'];
+
+let _sbClient = null;
+let _previewData = {};
+
+// ── Supabase Loader ──────────────────────────────────────────────────────────
+async function getSupabase() {
+  if (_sbClient) return _sbClient;
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) throw new Error('Enter Supabase URL and Anon Key first.');
+  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+  _sbClient = createClient(url, key);
+  return _sbClient;
+}
+
+// ── Step navigation ───────────────────────────────────────────────────────────
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+function backToStep1() {
+  hide('section-step2'); hide('section-step3');
+  show('section-step1');
+}
+
+// ── Fetch from Google Apps Script ─────────────────────────────────────────────
+async function fetchSheet(webAppUrl, sheetName) {
+  const url = `${webAppUrl}?action=read&sheet=${sheetName}`;
+  const res = await fetch(url, { redirect: 'follow' });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${sheetName}`);
+  const data = await res.json();
+  return data.values || [];
+}
+
+// ── Convert Sheets row array to Supabase object ───────────────────────────────
+function rowToObject(sheetName, rowArr) {
+  const cols = COLUMNS[sheetName];
+  if (!cols) return null;
+  const obj = {};
+  cols.forEach((col, i) => {
+    let val = rowArr[i] ?? null;
+    if (val === '') val = null;
+    if (BOOL_COLS.includes(col)) {
+      val = (val === 'TRUE' || val === true || val === 1) ? true : false;
+    }
+    if (NUMERIC_COLS.includes(col) && val !== null) {
+      const n = parseFloat(val);
+      val = isNaN(n) ? null : n;
+    }
+    obj[col] = val;
+  });
+  return obj;
+}
+
+// ── Preview Step ─────────────────────────────────────────────────────────────
+async function loadPreview() {
+  const webAppUrl = document.getElementById('webapp-url').value.trim();
+  if (!webAppUrl) { alert('Enter the Google Apps Script Web App URL.'); return; }
+  const sbUrl = document.getElementById('sb-url').value.trim();
+  const sbKey = document.getElementById('sb-key').value.trim();
+  if (!sbUrl || !sbKey) { alert('Enter Supabase URL and Anon Key.'); return; }
+
+  document.querySelector('#section-step1 .btn--primary').disabled = true;
+  document.querySelector('#section-step1 .btn--primary').textContent = 'Loading…';
+
+  try {
+    const tableNames = Object.values(SHEETS);
+    const results = {};
+
+    for (const tbl of tableNames) {
+      try {
+        const rows = await fetchSheet(webAppUrl, tbl);
+        // Skip header row if present
+        const dataRows = (rows.length > 0 && rows[0]?.[0] === COLUMNS[tbl]?.[0]) ? rows.slice(1) : rows;
+        results[tbl] = { count: dataRows.length, rows: dataRows, error: null };
+      } catch (e) {
+        results[tbl] = { count: 0, rows: [], error: e.message };
+      }
+    }
+    _previewData = results;
+
+    // Render preview table
+    const totalRows = Object.values(results).reduce((s, r) => s + r.count, 0);
+    let html = `<p style="margin-bottom:0.75rem;font-size:0.85rem;color:#555;">Total rows to migrate: <strong>${totalRows}</strong></p>`;
+    html += '<table><thead><tr><th>Table</th><th>Rows</th><th>Status</th></tr></thead><tbody>';
+    for (const [tbl, r] of Object.entries(results)) {
+      const badge = r.error
+        ? `<span class="badge badge--red">Error</span>`
+        : r.count === 0
+          ? `<span class="badge badge--yellow">Empty</span>`
+          : `<span class="badge badge--green">${r.count} rows</span>`;
+      html += `<tr><td>${tbl}</td><td>${r.count}</td><td>${badge}${r.error ? ` <small style="color:#b91c1c">${r.error}</small>` : ''}</td></tr>`;
+    }
+    html += '</tbody></table>';
+
+    document.getElementById('preview-table-wrap').innerHTML = html;
+    hide('section-step1');
+    show('section-step2');
+  } catch (err) {
+    alert('Error loading preview: ' + err.message);
+  } finally {
+    document.querySelector('#section-step1 .btn--primary').disabled = false;
+    document.querySelector('#section-step1 .btn--primary').textContent = 'Next: Preview Data →';
+  }
+}
+
+// ── Migration Step ────────────────────────────────────────────────────────────
+const CHUNK_SIZE = 100; // Supabase insert batch size
+
+async function startMigration() {
+  document.getElementById('start-migrate-btn').disabled = true;
+  hide('section-step2');
+  show('section-step3');
+
+  const sb = await getSupabase();
+  const tableNames = Object.values(SHEETS);
+  const statusList = document.getElementById('status-list');
+  statusList.innerHTML = '';
+
+  const items = {};
+  tableNames.forEach(t => {
+    const li = document.createElement('li');
+    li.id = `status-${t}`;
+    li.innerHTML = `<span class="dot dot--pending"></span> <span>${t}</span> <span style="margin-left:auto;color:#999;font-size:0.78rem" id="count-${t}"></span>`;
+    statusList.appendChild(li);
+    items[t] = li;
+  });
+
+  let done = 0;
+  let totalErrors = 0;
+  const errors = [];
+
+  for (const tbl of tableNames) {
+    const li = items[tbl];
+    li.querySelector('.dot').className = 'dot dot--running';
+
+    // Scroll the item into view
+    li.scrollIntoView({ block: 'nearest' });
+
+    const data = _previewData[tbl] || { rows: [], error: null };
+    document.getElementById('progress-label').textContent = `Migrating ${tbl}…`;
+
+    if (data.error) {
+      li.querySelector('.dot').className = 'dot dot--skip';
+      li.querySelector(`#count-${tbl}`).textContent = 'skipped (fetch error)';
+      done++;
+      updateProgress(done, tableNames.length);
+      continue;
+    }
+
+    if (data.rows.length === 0) {
+      li.querySelector('.dot').className = 'dot dot--skip';
+      li.querySelector(`#count-${tbl}`).textContent = 'empty';
+      done++;
+      updateProgress(done, tableNames.length);
+      continue;
+    }
+
+    try {
+      // Convert all rows to objects
+      const objects = data.rows.map(r => rowToObject(tbl, r)).filter(Boolean);
+
+      // Skip rows with no primary key
+      const pkCol = COLUMNS[tbl]?.[0];
+      const withPk = objects.filter(o => o[pkCol]);
+
+      // Deduplicate by primary key — keep last occurrence (handles duplicate rows in source sheet)
+      const pkMap = new Map();
+      withPk.forEach(o => pkMap.set(o[pkCol], o));
+      const validObjects = [...pkMap.values()];
+
+      if (validObjects.length === 0) {
+        li.querySelector('.dot').className = 'dot dot--skip';
+        li.querySelector(`#count-${tbl}`).textContent = 'no valid rows';
+        done++;
+        updateProgress(done, tableNames.length);
+        continue;
+      }
+
+      // Insert in chunks (upsert to handle re-runs)
+      let inserted = 0;
+      for (let i = 0; i < validObjects.length; i += CHUNK_SIZE) {
+        const chunk = validObjects.slice(i, i + CHUNK_SIZE);
+        const { error } = await sb.from(tbl).upsert(chunk, { onConflict: pkCol });
+        if (error) throw new Error(error.message);
+        inserted += chunk.length;
+        li.querySelector(`#count-${tbl}`).textContent = `${inserted}/${validObjects.length}`;
+      }
+
+      li.querySelector('.dot').className = 'dot dot--done';
+      li.querySelector(`#count-${tbl}`).textContent = `✓ ${validObjects.length} rows`;
+    } catch (err) {
+      totalErrors++;
+      errors.push(`${tbl}: ${err.message}`);
+      li.querySelector('.dot').className = 'dot dot--error';
+      li.querySelector(`#count-${tbl}`).textContent = '✕ ' + err.message.slice(0, 60);
+    }
+
+    done++;
+    updateProgress(done, tableNames.length);
+    await sleep(100); // small delay to avoid rate limits
+  }
+
+  // Show summary
+  document.getElementById('progress-label').textContent = 'Migration complete!';
+  const summaryBox = document.getElementById('summary-box');
+  summaryBox.style.display = 'block';
+  if (totalErrors === 0) {
+    summaryBox.className = 'summary-box';
+    summaryBox.innerHTML = `<strong>✅ Migration successful!</strong><br>All tables migrated. You can now open the app and verify your data.`;
+  } else {
+    summaryBox.className = 'summary-box error';
+    summaryBox.innerHTML = `<strong>⚠ Migration completed with ${totalErrors} error(s):</strong><ul style="margin-top:0.5rem;padding-left:1.2rem;">${errors.map(e => `<li style="font-size:0.82rem">${e}</li>`).join('')}</ul><br>Try re-running the migration — upsert is safe to retry.`;
+  }
+
+  document.getElementById('back-btn-step3').style.display = 'inline-flex';
+  document.getElementById('done-btn').style.display = 'inline-flex';
+}
+
+function updateProgress(done, total) {
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>

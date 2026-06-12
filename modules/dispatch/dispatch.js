@@ -1,7 +1,7 @@
 // ============================================================
 // modules/dispatch/new-dispatch.js
 // ============================================================
-import { readAllRows, sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, activeOnly } from '../../sheets-api.js';
+import { readAllRows, sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, activeOnly } from '../../supabase-api.js';
 import { SHEETS, BATCH_STATUS } from '../../config.js';
 import { toast } from '../../components/toast.js';
 import { hasPermission, getCurrentUser } from '../../auth.js';
@@ -101,7 +101,7 @@ export async function renderNewDispatch(container) {
 // ============================================================
 export async function renderDispatchList(container) {
   const { DataTable, statusBadge } = await import('../../components/data-table.js');
-  const { readAllRows: _readAll, sheetsBatchRead: _batch, parseSheetRows: _parse } = await import('../../sheets-api.js');
+  const { readAllRows: _readAll, sheetsBatchRead: _batch, parseSheetRows: _parse } = await import('../../supabase-api.js');
 
   container.innerHTML = `
     <div class="page-header"><div><h1 class="page-title">Dispatch List</h1></div>

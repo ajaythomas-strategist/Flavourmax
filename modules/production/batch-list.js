@@ -1,7 +1,7 @@
 // ============================================================
 // modules/production/batch-list.js — Production Batch List
 // ============================================================
-import { sheetsBatchRead, parseSheetRows, updateFullRow, findRowById, readAllRows, activeOnly } from '../../sheets-api.js';
+import { sheetsBatchRead, parseSheetRows, updateFullRow, findRowById, readAllRows, activeOnly } from '../../supabase-api.js';
 import { SHEETS, BATCH_STATUS } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { toast } from '../../components/toast.js';
@@ -122,11 +122,11 @@ async function cancelBatch(batch, onDone) {
   if (!res) return;
 
   try {
-    const rowNum = await findRowById(SHEETS.PRODUCTION_BATCHES, batch.batch_id);
-    if (rowNum > 0) {
+    const batchId = await findRowById(SHEETS.PRODUCTION_BATCHES, batch.batch_id);
+    if (batchId) {
       const now = new Date().toISOString();
       // Update batch header
-      await updateFullRow(SHEETS.PRODUCTION_BATCHES, rowNum, {
+      await updateFullRow(SHEETS.PRODUCTION_BATCHES, batchId, {
         ...batch,
         status: BATCH_STATUS.CANCELLED,
         notes: (batch.notes ? batch.notes + ' | ' : '') + 'Cancelled reason: ' + res.reason,
@@ -138,9 +138,9 @@ async function cancelBatch(batch, onDone) {
       const logs = allLogs.filter(l => l.batch_id === batch.batch_id);
       for (const l of logs) {
         if (l.step_status !== 'Completed') {
-          const logRowNum = await findRowById(SHEETS.PROCESS_LOG, l.log_id);
-          if (logRowNum > 0) {
-            await updateFullRow(SHEETS.PROCESS_LOG, logRowNum, {
+          const logId = await findRowById(SHEETS.PROCESS_LOG, l.log_id);
+          if (logId) {
+            await updateFullRow(SHEETS.PROCESS_LOG, logId, {
               ...l,
               step_status: 'Cancelled',
               completed_at: now,
