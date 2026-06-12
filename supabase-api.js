@@ -8,7 +8,18 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { CONFIG, SHEETS, COLUMNS, ID_PREFIXES } from './config.js';
 
 // ─── Supabase Client ──────────────────────────────────────────
-const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+let supabase;
+try {
+  supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+} catch (err) {
+  console.error('[Supabase] Client init failed — data features disabled:', err.message);
+  supabase = null;
+}
+
+function _sb() {
+  if (!supabase) throw new Error('Supabase client not initialised. Check SUPABASE_URL and SUPABASE_ANON_KEY in config.js.');
+  return supabase;
+}
 
 // ─── Dim cache ────────────────────────────────────────────────
 const _cache = {};
@@ -35,7 +46,7 @@ export function isWebAppConnected() { return true; }
 export async function sheetsRead(rangeOrSheet) {
   const sheetName = rangeOrSheet.split('!')[0].replace(/'/g, '');
   try {
-    const { data, error } = await supabase.from(sheetName).select('*');
+    const { data, error } = await _sb().from(sheetName).select('*');
     if (error) { console.warn('[sheetsRead] failed:', error.message); return []; }
     return data || [];
   } catch (err) {
@@ -49,7 +60,7 @@ export async function sheetsBatchRead(ranges) {
   const sheetNames = [...new Set(ranges.map(r => r.split('!')[0].replace(/'/g, '')))];
   try {
     const results = await Promise.all(
-      sheetNames.map(name => supabase.from(name).select('*').then(({ data }) => data || []))
+      sheetNames.map(name => _sb().from(name).select('*').then(({ data }) => data || []))
     );
     const sheetMap = {};
     sheetNames.forEach((name, i) => { sheetMap[name] = results[i]; });
@@ -63,7 +74,7 @@ export async function sheetsBatchRead(ranges) {
 /** Read all rows of a table as objects */
 export async function readAllRows(sheetName) {
   try {
-    const { data, error } = await supabase.from(sheetName).select('*');
+    const { data, error } = await _sb().from(sheetName).select('*');
     if (error) { console.warn('[readAllRows] failed:', error.message); return []; }
     return data || [];
   } catch (err) {
@@ -96,7 +107,7 @@ export async function sheetsAppend(sheetName, rows) {
     });
     return obj;
   });
-  const { error } = await supabase.from(sheetName).insert(objects);
+  const { error } = await _sb().from(sheetName).insert(objects);
   if (error) throw new Error(error.message);
   return { success: true };
 }
@@ -123,7 +134,7 @@ export async function sheetsUpdate(rangeOrSheet, values) {
 export async function findRowById(sheetName, id) {
   const pkCol = COLUMNS[sheetName]?.[0] || 'id';
   try {
-    const { data, error } = await supabase.from(sheetName).select(pkCol).eq(pkCol, id).maybeSingle();
+    const { data, error } = await _sb().from(sheetName).select(pkCol).eq(pkCol, id).maybeSingle();
     if (error || !data) return null;
     return data[pkCol];
   } catch (err) {
@@ -139,7 +150,7 @@ export async function findRowById(sheetName, id) {
 export async function readRowByNumber(sheetName, id) {
   const pkCol = COLUMNS[sheetName]?.[0] || 'id';
   try {
-    const { data } = await supabase.from(sheetName).select('*').eq(pkCol, id).maybeSingle();
+    const { data } = await _sb().from(sheetName).select('*').eq(pkCol, id).maybeSingle();
     if (!data) return [];
     const cols = COLUMNS[sheetName] || [];
     return cols.map(col => data[col] ?? '');
@@ -173,7 +184,7 @@ export async function updateFullRow(sheetName, id, rowData) {
   // Remove undefined values
   Object.keys(updateData).forEach(k => { if (updateData[k] === undefined) delete updateData[k]; });
 
-  const { error } = await supabase.from(sheetName).update(updateData).eq(pkCol, id);
+  const { error } = await _sb().from(sheetName).update(updateData).eq(pkCol, id);
   if (error) throw new Error(error.message);
 }
 
@@ -183,14 +194,14 @@ export async function softDelete(sheetName, id) {
   const hasUpdatedAt = (COLUMNS[sheetName] || []).includes('updated_at');
   const updateData = { is_active: false };
   if (hasUpdatedAt) updateData.updated_at = new Date().toISOString();
-  const { error } = await supabase.from(sheetName).update(updateData).eq(pkCol, id);
+  const { error } = await _sb().from(sheetName).update(updateData).eq(pkCol, id);
   if (error) throw new Error(error.message);
 }
 
 /** Hard delete — permanently removes the record */
 export async function hardDelete(sheetName, id) {
   const pkCol = COLUMNS[sheetName]?.[0] || 'id';
-  const { error } = await supabase.from(sheetName).delete().eq(pkCol, id);
+  const { error } = await _sb().from(sheetName).delete().eq(pkCol, id);
   if (error) throw new Error(error.message);
 }
 
@@ -284,7 +295,7 @@ export async function getIngredientBalance(ingredientId) {
 export async function loadDimCache(force = false) {
   if (!force && _cache.__loaded) return _cache;
   await Promise.all(DIM_SHEETS.map(async s => {
-    const { data } = await supabase.from(s).select('*');
+    const { data } = await _sb().from(s).select('*');
     _cache[s] = data || [];
   }));
   _cache.__loaded = true;
@@ -338,7 +349,7 @@ export function activeOnly(rows) {
 // These exist in sheets-api.js; kept as stubs so settings page doesn't crash.
 
 export async function testConnection() {
-  const { data, error } = await supabase.from('dim_units').select('unit_id').limit(1);
+  const { data, error } = await _sb().from('dim_units').select('unit_id').limit(1);
   if (error) throw new Error('Supabase connection failed: ' + error.message);
   return 'Supabase Connected';
 }
