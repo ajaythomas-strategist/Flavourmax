@@ -207,15 +207,19 @@ export async function renderProcesses(container) {
     list.style.cssText = 'display:flex;flex-direction:column;gap:0;padding:0 4px';
     list.innerHTML = html;
 
-    // Equalize card heights per product row using JS (CSS stretch is unreliable with overflow-x:auto)
-    requestAnimationFrame(() => {
+    // Equalize card heights per product row.
+    // Double-rAF: first rAF schedules after DOM paint; second fires after fonts
+    // and text reflow are complete, so getBoundingClientRect() is accurate.
+    const equalizeHeights = () => {
       list.querySelectorAll('[data-steps-row]').forEach(row => {
         const cards = [...row.querySelectorAll('[data-step-card]')];
         if (cards.length < 2) return;
+        cards.forEach(c => { c.style.minHeight = ''; }); // reset before measuring
         const maxH = Math.max(...cards.map(c => c.getBoundingClientRect().height));
-        cards.forEach(c => { c.style.minHeight = maxH + 'px'; });
+        if (maxH > 0) cards.forEach(c => { c.style.minHeight = maxH + 'px'; });
       });
-    });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(equalizeHeights));
 
     list.querySelectorAll('[data-action="edit"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
