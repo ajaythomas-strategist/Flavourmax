@@ -51,7 +51,7 @@ function _showPageLoading(msg = 'Loading…', slow = false) {
       <div class="spinner"></div>
       <p style="margin-top:.5rem">${escHtml(msg)}</p>
       ${slow ? `<p style="font-size:.75rem;color:var(--color-text-muted);margin-top:.25rem">
-        Google Apps Script takes a moment to wake up after inactivity.
+        Supabase is waking up after inactivity — data will appear shortly.
       </p>` : ''}
     </div>`;
 }
