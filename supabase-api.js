@@ -181,7 +181,15 @@ export async function updateFullRow(sheetName, id, rowData) {
     updateData.updated_at = new Date().toISOString();
   }
 
-  // Remove undefined values
+  // Strip keys not declared in COLUMNS to prevent "column not found" errors in Supabase
+  const schemaCols = COLUMNS[sheetName];
+  if (schemaCols) {
+    Object.keys(updateData).forEach(k => {
+      if (!schemaCols.includes(k)) delete updateData[k];
+    });
+  }
+
+  // Remove undefined / null-ish values
   Object.keys(updateData).forEach(k => { if (updateData[k] === undefined) delete updateData[k]; });
 
   const { error } = await _sb().from(sheetName).update(updateData).eq(pkCol, id);

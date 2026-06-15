@@ -104,7 +104,7 @@ export async function changePassword(currentPassword, newPassword) {
     // Try to find/update in Supabase; if not found, this is a no-op for the demo user
     const rowId = await findRowById(SHEETS.USERS, demoUser.user_id);
     if (rowId) {
-      await updateFullRow(SHEETS.USERS, rowId, { password_hash: newHash, updated_at: new Date().toISOString() });
+      await updateFullRow(SHEETS.USERS, rowId, { password_hash: newHash });
     }
   }
 }
@@ -117,7 +117,7 @@ export async function resetUserPassword(userId, newPassword) {
   const newHash = await sha256(newPassword);
   const rowId   = await findRowById(SHEETS.USERS, userId);
   if (!rowId) throw new Error('User not found in database.');
-  await updateFullRow(SHEETS.USERS, rowId, { password_hash: newHash, updated_at: new Date().toISOString() });
+  await updateFullRow(SHEETS.USERS, rowId, { password_hash: newHash });
 }
 
 // ─── Google OAuth Login ───────────────────────────────────────
