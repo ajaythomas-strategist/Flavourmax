@@ -4,8 +4,8 @@
 // ============================================================
 import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, parseSheetRows, sheetsBatchRead, readRowByNumber } from '../supabase-api.js?v=4';
 import { SHEETS, COLUMNS } from '../config.js?v=4';
-import { DataTable, statusBadge } from '../../components/data-table.js';
-import { formModal, confirm } from '../../components/modal.js';
+import { DataTable, statusBadge } from '../../components/data-table.js?v=4';
+import { formModal, confirm } from '../../components/modal.js?v=4';
 import { toast } from '../../components/toast.js?v=4';
 import { hasPermission, getCurrentUser } from '../auth.js?v=4';
 

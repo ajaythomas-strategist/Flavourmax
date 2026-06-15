@@ -4,7 +4,7 @@
 // ============================================================
 import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache, activeOnly, sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=4';
 import { SHEETS } from '../config.js?v=4';
-import { formModal, confirm, contentModal } from '../../components/modal.js';
+import { formModal, confirm, contentModal } from '../../components/modal.js?v=4';
 import { toast } from '../../components/toast.js?v=4';
 import { hasPermission } from '../auth.js?v=4';
 

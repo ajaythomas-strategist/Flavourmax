@@ -4,8 +4,8 @@
 import { readAllRows, sheetsAppend, findRowById, updateFullRow, softDelete,
          generateId, getDimCache, clearDimCache, loadDimCache } from '../supabase-api.js?v=4';
 import { SHEETS } from '../config.js?v=4';
-import { DataTable, statusBadge } from '../../components/data-table.js';
-import { formModal, confirm } from '../../components/modal.js';
+import { DataTable, statusBadge } from '../../components/data-table.js?v=4';
+import { formModal, confirm } from '../../components/modal.js?v=4';
 import { toast } from '../../components/toast.js?v=4';
 import { hasPermission } from '../auth.js?v=4';
 

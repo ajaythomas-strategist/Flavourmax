@@ -4,7 +4,7 @@
 // ============================================================
 import { testConnection, initializeAllSheets, fixIsActiveStatus } from '../supabase-api.js?v=4';
 import { toast } from '../../components/toast.js?v=4';
-import { confirm } from '../../components/modal.js';
+import { confirm } from '../../components/modal.js?v=4';
 import { CONFIG } from '../config.js?v=4';
 
 export function renderSheetsConfig(container) {

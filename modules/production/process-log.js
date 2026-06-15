@@ -5,7 +5,7 @@
 import { sheetsAppend, findRowById, updateFullRow, generateId, sheetsBatchRead, parseSheetRows, readAllRows, activeOnly } from '../supabase-api.js?v=4';
 import { SHEETS, BATCH_STATUS } from '../config.js?v=4';
 import { toast } from '../../components/toast.js?v=4';
-import { confirm, alert, formModal } from '../../components/modal.js';
+import { confirm, alert, formModal } from '../../components/modal.js?v=4';
 import { hasPermission, getCurrentUser } from '../auth.js?v=4';
 import { navigate } from '../../app.js';
 import { raiseCorrection } from '../corrections/corrections-inbox.js';
