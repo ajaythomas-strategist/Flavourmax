@@ -33,7 +33,7 @@ const ROUTES = {
   'reports/inventory':           () => import('./modules/reports/reports.js').then(m => m.renderInventoryReport),
   'reports/sales':               () => import('./modules/reports/reports.js').then(m => m.renderSalesReport),
   'reports/ingredient-usage':    () => import('./modules/reports/reports.js').then(m => m.renderIngredientUsage),
-  'settings/users':              () => import('./modules/settings/users.js').then(m => m.renderUsers),
+  'settings/users':              () => import('./modules/settings/users.js?v=2').then(m => m.renderUsers),
   'settings/sheets-config':      () => import('./modules/settings/sheets-config.js').then(m => m.renderSheetsConfig),
 };
 

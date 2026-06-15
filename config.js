@@ -156,6 +156,7 @@ export const ID_PREFIXES = {
 
 // ─── Role Definitions ────────────────────────────────────────
 export const ROLES = {
+  SUPER_ADMIN: 'Super Admin',   // Highest privilege — invisible to other roles
   ADMIN:       'Admin',
   SUPERVISOR:  'Supervisor',
   QC_STAFF:    'QC Staff',
@@ -165,26 +166,30 @@ export const ROLES = {
 };
 
 // ─── Role Permissions ────────────────────────────────────────
-// true = allowed, false = denied, 'own' = only own records
+// true = allowed, false = denied
+// NOTE: Super Admin bypasses this table entirely (see auth.js hasPermission).
+//       The 'Super Admin' column below is kept for completeness only.
 export const PERMISSIONS = {
-  dashboard:            { Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': true  },
-  master_view:          { Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': true  },
-  master_edit:          { Admin: true, Supervisor: false,'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  dashboard:            { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': true  },
+  master_view:          { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': true  },
+  master_edit:          { 'Super Admin': true, Admin: true, Supervisor: false,'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
   // ── Who can define/edit process data-collection fields ─────
-  process_fields_edit:  { Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
-  inventory_view:       { Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': true  },
-  inventory_edit:       { Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
-  production_view:      { Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': true  },
-  production_edit:      { Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': false, 'Viewer / Analyst': false },
-  dispatch_view:        { Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': true  },
-  dispatch_edit:        { Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': false },
-  sales_view:           { Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': true  },
-  sales_edit:           { Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': false },
-  corrections_raise:    { Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': false },
-  corrections_approve:  { Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
-  reports_view:         { Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': true  },
-  users_manage:         { Admin: true, Supervisor: false,'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
-  settings_edit:        { Admin: true, Supervisor: false,'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  process_fields_edit:  { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  inventory_view:       { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': true  },
+  inventory_edit:       { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  production_view:      { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': true  },
+  production_edit:      { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  dispatch_view:        { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': true  },
+  dispatch_edit:        { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': false },
+  sales_view:           { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': true  },
+  sales_edit:           { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': false },
+  corrections_raise:    { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': true,  'Sales / Dispatch': true,  'Viewer / Analyst': false },
+  corrections_approve:  { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  reports_view:         { 'Super Admin': true, Admin: true, Supervisor: true, 'QC Staff': true,  'Production Staff': false, 'Sales / Dispatch': true,  'Viewer / Analyst': true  },
+  users_manage:         { 'Super Admin': true, Admin: true, Supervisor: false,'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  settings_edit:        { 'Super Admin': true, Admin: true, Supervisor: false,'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
+  // ── Super Admin exclusive ───────────────────────────────────
+  super_admin:          { 'Super Admin': true, Admin: false, Supervisor: false,'QC Staff': false, 'Production Staff': false, 'Sales / Dispatch': false, 'Viewer / Analyst': false },
 };
 
 // ─── GST Rates (India) ───────────────────────────────────────

@@ -36,7 +36,7 @@ async function sha256(str) {
 
 // ─── App Users ────────────────────────────────────────────────
 const DEMO_USERS = [
-  { user_id: 'USR-001', full_name: 'Ajay Thomas', email: 'mail@thestrategist.co.in', password: 'AjayThomas@1', role: 'Super Admin', is_active: 'TRUE' },
+  { user_id: 'USR-SA-001', full_name: 'Ajay Thomas', email: 'mail@thestrategist.co.in', password: 'AjayThomas@1', role: 'Super Admin', is_active: 'TRUE' },
 ];
 
 export async function loginWithPassword(email, password) {
