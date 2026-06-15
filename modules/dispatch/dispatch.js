@@ -1,10 +1,10 @@
 // ============================================================
 // modules/dispatch/new-dispatch.js
 // ============================================================
-import { readAllRows, sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, activeOnly } from '../../supabase-api.js';
-import { SHEETS, BATCH_STATUS } from '../../config.js';
+import { readAllRows, sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js?v=2';
+import { SHEETS, BATCH_STATUS } from '../config.js?v=2';
 import { toast } from '../../components/toast.js';
-import { hasPermission, getCurrentUser } from '../../auth.js';
+import { hasPermission, getCurrentUser } from '../auth.js?v=2';
 
 export async function renderNewDispatch(container) {
   if (!hasPermission('dispatch_edit')) { container.innerHTML = '<div class="page-header"><h1>Access Denied</h1></div>'; return; }

@@ -1,8 +1,8 @@
 // ============================================================
 // modules/dashboard.js — KPI Dashboard
 // ============================================================
-import { sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js';
-import { SHEETS } from '../config.js';
+import { sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js?v=2';
+import { SHEETS } from '../config.js?v=2';
 import { toast } from '../components/toast.js';
 
 export async function renderDashboard(container) {
@@ -44,15 +44,20 @@ export async function renderDashboard(container) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 
-    // Fetch all data in a single HTTP call
-    const dashData = await sheetsBatchRead([
-      `${SHEETS.PRODUCTION_BATCHES}!A:L`,
-      `${SHEETS.INVENTORY_BALANCE}!A:F`,
-      `${SHEETS.INGREDIENTS}!A:H`,
-      `${SHEETS.DISPATCH}!A:M`,
-      `${SHEETS.CORRECTIONS}!A:N`,
-      `${SHEETS.PROCESS_LOG}!A:O`,
-      `${SHEETS.PROCESSES}!A:G`,
+    // Fetch all data with a 20-second timeout to prevent infinite loading
+    const _fetchTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Dashboard data timed out. Check your Supabase connection.')), 20_000));
+    const dashData = await Promise.race([
+      sheetsBatchRead([
+        `${SHEETS.PRODUCTION_BATCHES}!A:L`,
+        `${SHEETS.INVENTORY_BALANCE}!A:F`,
+        `${SHEETS.INGREDIENTS}!A:H`,
+        `${SHEETS.DISPATCH}!A:M`,
+        `${SHEETS.CORRECTIONS}!A:N`,
+        `${SHEETS.PROCESS_LOG}!A:O`,
+        `${SHEETS.PROCESSES}!A:G`,
+      ]),
+      _fetchTimeout,
     ]);
     const batches      = parseSheetRows(SHEETS.PRODUCTION_BATCHES, dashData[0].values || []);
     const balances     = parseSheetRows(SHEETS.INVENTORY_BALANCE,  dashData[1].values || []);

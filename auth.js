@@ -3,8 +3,8 @@
 // Supports Google OAuth 2.0 and simple email+password login
 // ============================================================
 
-import { CONFIG, ROLES, PERMISSIONS, SHEETS } from './config.js';
-import { sheetsRead, setAccessToken, parseSheetRows, updateFullRow, findRowById } from './supabase-api.js';
+import { CONFIG, ROLES, PERMISSIONS, SHEETS } from './config.js?v=2';
+import { sheetsRead, setAccessToken, parseSheetRows, updateFullRow, findRowById } from './supabase-api.js?v=2';
 
 // ─── Session ─────────────────────────────────────────────────
 let _currentUser = null;

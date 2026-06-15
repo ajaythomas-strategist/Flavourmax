@@ -1,12 +1,12 @@
 // ============================================================
 // modules/master/processes.js — Process & Dynamic Field Builder
 // ============================================================
-import { readAllRows, sheetsBatchRead, parseSheetRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache, activeOnly } from '../../supabase-api.js';
-import { SHEETS, FIELD_TYPES } from '../../config.js';
+import { readAllRows, sheetsBatchRead, parseSheetRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache, activeOnly } from '../supabase-api.js?v=2';
+import { SHEETS, FIELD_TYPES } from '../config.js?v=2';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm, alert, contentModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission } from '../../auth.js';
+import { hasPermission } from '../auth.js?v=2';
 
 export async function renderProcesses(container) {
   const canEditProcess = hasPermission('master_edit');

@@ -1,8 +1,8 @@
 // ============================================================
 // modules/inventory/current-stock.js — Current Stock Dashboard
 // ============================================================
-import { readAllRows, sheetsBatchRead, parseSheetRows } from '../../supabase-api.js';
-import { SHEETS } from '../../config.js';
+import { readAllRows, sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=2';
+import { SHEETS } from '../config.js?v=2';
 import { DataTable } from '../../components/data-table.js';
 import { toast } from '../../components/toast.js';
 

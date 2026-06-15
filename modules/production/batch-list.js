@@ -1,12 +1,12 @@
 // ============================================================
 // modules/production/batch-list.js — Production Batch List
 // ============================================================
-import { sheetsBatchRead, parseSheetRows, updateFullRow, findRowById, readAllRows, activeOnly } from '../../supabase-api.js';
-import { SHEETS, BATCH_STATUS } from '../../config.js';
+import { sheetsBatchRead, parseSheetRows, updateFullRow, findRowById, readAllRows, activeOnly } from '../supabase-api.js?v=2';
+import { SHEETS, BATCH_STATUS } from '../config.js?v=2';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { toast } from '../../components/toast.js';
 import { formModal } from '../../components/modal.js';
-import { hasPermission, getCurrentUser } from '../../auth.js';
+import { hasPermission, getCurrentUser } from '../auth.js?v=2';
 import { navigate } from '../../app.js';
 
 export async function renderBatchList(container) {

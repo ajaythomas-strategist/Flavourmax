@@ -2,11 +2,11 @@
 // modules/production/process-log.js — Dynamic Process Logging
 // Sequential Process Stepper with Input/Output Tracking
 // ============================================================
-import { sheetsAppend, findRowById, updateFullRow, generateId, sheetsBatchRead, parseSheetRows, readAllRows, activeOnly } from '../../supabase-api.js';
-import { SHEETS, BATCH_STATUS } from '../../config.js';
+import { sheetsAppend, findRowById, updateFullRow, generateId, sheetsBatchRead, parseSheetRows, readAllRows, activeOnly } from '../supabase-api.js?v=2';
+import { SHEETS, BATCH_STATUS } from '../config.js?v=2';
 import { toast } from '../../components/toast.js';
 import { confirm, alert, formModal } from '../../components/modal.js';
-import { hasPermission, getCurrentUser } from '../../auth.js';
+import { hasPermission, getCurrentUser } from '../auth.js?v=2';
 import { navigate } from '../../app.js';
 import { raiseCorrection } from '../corrections/corrections-inbox.js';
 

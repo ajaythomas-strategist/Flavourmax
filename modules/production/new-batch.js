@@ -3,10 +3,10 @@
 // Desktop: form-grid + ingredient table
 // Mobile:  stacked form fields + ingredient cards
 // ============================================================
-import { sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly } from '../../supabase-api.js';
-import { SHEETS, BATCH_STATUS } from '../../config.js';
+import { sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly } from '../supabase-api.js?v=2';
+import { SHEETS, BATCH_STATUS } from '../config.js?v=2';
 import { toast } from '../../components/toast.js';
-import { hasPermission, getCurrentUser } from '../../auth.js';
+import { hasPermission, getCurrentUser } from '../auth.js?v=2';
 import { navigate } from '../../app.js';
 
 const isMobile = () => window.innerWidth <= 768;
