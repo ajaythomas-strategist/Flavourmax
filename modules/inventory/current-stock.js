@@ -1,10 +1,10 @@
 // ============================================================
 // modules/inventory/current-stock.js — Current Stock Dashboard
 // ============================================================
-import { readAllRows, sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=3';
-import { SHEETS } from '../config.js?v=3';
+import { readAllRows, sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=4';
+import { SHEETS } from '../config.js?v=4';
 import { DataTable } from '../../components/data-table.js';
-import { toast } from '../../components/toast.js';
+import { toast } from '../../components/toast.js?v=4';
 
 export async function renderCurrentStock(container) {
   container.innerHTML = `

@@ -3,8 +3,8 @@
 // Supports Google OAuth 2.0 and simple email+password login
 // ============================================================
 
-import { CONFIG, ROLES, PERMISSIONS, SHEETS } from './config.js?v=3';
-import { sheetsRead, setAccessToken, parseSheetRows, updateFullRow, findRowById } from './supabase-api.js?v=3';
+import { CONFIG, ROLES, PERMISSIONS, SHEETS } from './config.js?v=4';
+import { sheetsRead, setAccessToken, parseSheetRows, updateFullRow, findRowById } from './supabase-api.js?v=4';
 
 // ─── Session ─────────────────────────────────────────────────
 let _currentUser = null;
@@ -92,7 +92,8 @@ export async function changePassword(currentPassword, newPassword) {
     }
     const newHash = await sha256(newPassword);
     const rowId   = await findRowById(SHEETS.USERS, user.user_id);
-    await updateFullRow(SHEETS.USERS, rowId, { ...user, password_hash: newHash });
+    // Only send password_hash — never spread user object (avoids sending extra/unknown fields)
+    await updateFullRow(SHEETS.USERS, rowId, { password_hash: newHash });
   } else {
     // DEMO_USERS admin — verify against hardcoded password
     const demoUser = DEMO_USERS.find(u => u.email.toLowerCase() === _currentUser.email.toLowerCase());

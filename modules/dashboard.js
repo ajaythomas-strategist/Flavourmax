@@ -1,9 +1,9 @@
 // ============================================================
 // modules/dashboard.js — KPI Dashboard
 // ============================================================
-import { sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js?v=3';
-import { SHEETS } from '../config.js?v=3';
-import { toast } from '../components/toast.js';
+import { sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js?v=4';
+import { SHEETS } from '../config.js?v=4';
+import { toast } from '../components/toast.js?v=4';
 
 export async function renderDashboard(container) {
   container.innerHTML = `

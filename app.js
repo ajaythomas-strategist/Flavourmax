@@ -1,40 +1,40 @@
 // ============================================================
 // app.js — SPA Router & App Bootstrap
 // ============================================================
-import { restoreSession, loginWithPassword, isLoggedIn, getCurrentUser } from './auth.js?v=3';
-import { initSidebar, setActiveRoute } from './components/sidebar.js?v=3';
-import { initToasts, toast } from './components/toast.js?v=3';
-import { loadDimCache } from './supabase-api.js?v=3';
+import { restoreSession, loginWithPassword, isLoggedIn, getCurrentUser } from './auth.js?v=4';
+import { initSidebar, setActiveRoute } from './components/sidebar.js?v=4';
+import { initToasts, toast } from './components/toast.js?v=4';
+import { loadDimCache } from './supabase-api.js?v=4';
 
 // ─── Route Map ───────────────────────────────────────────────
 const ROUTES = {
-  'dashboard':                   () => import('./modules/dashboard.js?v=3').then(m => m.renderDashboard),
-  'master/companies':            () => import('./modules/master/companies.js?v=3').then(m => m.renderCompanies),
-  'master/categories':           () => import('./modules/master/categories.js?v=3').then(m => m.renderCategories),
-  'master/products':             () => import('./modules/master/products.js?v=3').then(m => m.renderProducts),
-  'master/ingredients':          () => import('./modules/master/ingredients.js?v=3').then(m => m.renderIngredients),
-  'master/processes':            () => import('./modules/master/processes.js?v=3').then(m => m.renderProcesses),
-  'master/recipes':              () => import('./modules/master/recipes.js?v=3').then(m => m.renderRecipes),
-  'master/units':                () => import('./modules/master/units.js?v=3').then(m => m.renderUnits),
-  'master/suppliers':            () => import('./modules/master/suppliers.js?v=3').then(m => m.renderSuppliers),
-  'inventory/stock-in':          () => import('./modules/inventory/stock-in.js?v=3').then(m => m.renderStockIn),
-  'inventory/stock-out':         () => import('./modules/inventory/stock-out.js?v=3').then(m => m.renderStockOut),
-  'inventory/current-stock':     () => import('./modules/inventory/current-stock.js?v=3').then(m => m.renderCurrentStock),
-  'production/new-batch':        () => import('./modules/production/new-batch.js?v=3').then(m => m.renderNewBatch),
-  'production/batch-list':       () => import('./modules/production/batch-list.js?v=3').then(m => m.renderBatchList),
-  'production/process-log':      () => import('./modules/production/process-log.js?v=3').then(m => m.renderProcessLog),
-  'dispatch/new-dispatch':       () => import('./modules/dispatch/dispatch.js?v=3').then(m => m.renderNewDispatch),
-  'dispatch/dispatch-list':      () => import('./modules/dispatch/dispatch.js?v=3').then(m => m.renderDispatchList),
-  'sales/new-sale':              () => import('./modules/sales/sales.js?v=3').then(m => m.renderNewSale),
-  'sales/sales-list':            () => import('./modules/sales/sales.js?v=3').then(m => m.renderSalesList),
-  'sales/sales-returns':         () => import('./modules/sales/sales.js?v=3').then(m => m.renderSalesReturns),
-  'corrections/inbox':           () => import('./modules/corrections/corrections-inbox.js?v=3').then(m => m.renderCorrectionsInbox),
-  'reports/production':          () => import('./modules/reports/reports.js?v=3').then(m => m.renderProductionReport),
-  'reports/inventory':           () => import('./modules/reports/reports.js?v=3').then(m => m.renderInventoryReport),
-  'reports/sales':               () => import('./modules/reports/reports.js?v=3').then(m => m.renderSalesReport),
-  'reports/ingredient-usage':    () => import('./modules/reports/reports.js?v=3').then(m => m.renderIngredientUsage),
-  'settings/users':              () => import('./modules/settings/users.js?v=3').then(m => m.renderUsers),
-  'settings/sheets-config':      () => import('./modules/settings/sheets-config.js?v=3').then(m => m.renderSheetsConfig),
+  'dashboard':                   () => import('./modules/dashboard.js?v=4').then(m => m.renderDashboard),
+  'master/companies':            () => import('./modules/master/companies.js?v=4').then(m => m.renderCompanies),
+  'master/categories':           () => import('./modules/master/categories.js?v=4').then(m => m.renderCategories),
+  'master/products':             () => import('./modules/master/products.js?v=4').then(m => m.renderProducts),
+  'master/ingredients':          () => import('./modules/master/ingredients.js?v=4').then(m => m.renderIngredients),
+  'master/processes':            () => import('./modules/master/processes.js?v=4').then(m => m.renderProcesses),
+  'master/recipes':              () => import('./modules/master/recipes.js?v=4').then(m => m.renderRecipes),
+  'master/units':                () => import('./modules/master/units.js?v=4').then(m => m.renderUnits),
+  'master/suppliers':            () => import('./modules/master/suppliers.js?v=4').then(m => m.renderSuppliers),
+  'inventory/stock-in':          () => import('./modules/inventory/stock-in.js?v=4').then(m => m.renderStockIn),
+  'inventory/stock-out':         () => import('./modules/inventory/stock-out.js?v=4').then(m => m.renderStockOut),
+  'inventory/current-stock':     () => import('./modules/inventory/current-stock.js?v=4').then(m => m.renderCurrentStock),
+  'production/new-batch':        () => import('./modules/production/new-batch.js?v=4').then(m => m.renderNewBatch),
+  'production/batch-list':       () => import('./modules/production/batch-list.js?v=4').then(m => m.renderBatchList),
+  'production/process-log':      () => import('./modules/production/process-log.js?v=4').then(m => m.renderProcessLog),
+  'dispatch/new-dispatch':       () => import('./modules/dispatch/dispatch.js?v=4').then(m => m.renderNewDispatch),
+  'dispatch/dispatch-list':      () => import('./modules/dispatch/dispatch.js?v=4').then(m => m.renderDispatchList),
+  'sales/new-sale':              () => import('./modules/sales/sales.js?v=4').then(m => m.renderNewSale),
+  'sales/sales-list':            () => import('./modules/sales/sales.js?v=4').then(m => m.renderSalesList),
+  'sales/sales-returns':         () => import('./modules/sales/sales.js?v=4').then(m => m.renderSalesReturns),
+  'corrections/inbox':           () => import('./modules/corrections/corrections-inbox.js?v=4').then(m => m.renderCorrectionsInbox),
+  'reports/production':          () => import('./modules/reports/reports.js?v=4').then(m => m.renderProductionReport),
+  'reports/inventory':           () => import('./modules/reports/reports.js?v=4').then(m => m.renderInventoryReport),
+  'reports/sales':               () => import('./modules/reports/reports.js?v=4').then(m => m.renderSalesReport),
+  'reports/ingredient-usage':    () => import('./modules/reports/reports.js?v=4').then(m => m.renderIngredientUsage),
+  'settings/users':              () => import('./modules/settings/users.js?v=4').then(m => m.renderUsers),
+  'settings/sheets-config':      () => import('./modules/settings/sheets-config.js?v=4').then(m => m.renderSheetsConfig),
 };
 
 // ─── Navigation Helper ───────────────────────────────────────

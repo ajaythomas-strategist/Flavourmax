@@ -1,12 +1,12 @@
 // ============================================================
 // modules/settings/users.js — User Management (Admin / Super Admin)
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, hardDelete } from '../supabase-api.js?v=3';
-import { SHEETS, ROLES } from '../config.js?v=3';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, hardDelete } from '../supabase-api.js?v=4';
+import { SHEETS, ROLES } from '../config.js?v=4';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';
-import { toast } from '../../components/toast.js';
-import { hasPermission, getCurrentUser, isSuperAdmin, resetUserPassword } from '../auth.js?v=3';
+import { toast } from '../../components/toast.js?v=4';
+import { hasPermission, getCurrentUser, isSuperAdmin, resetUserPassword } from '../auth.js?v=4';
 
 export async function renderUsers(container) {
   if (!hasPermission('users_manage')) {
@@ -138,7 +138,8 @@ export async function renderUsers(container) {
       const now = new Date().toISOString();
       if (data) {
         const rowNum = await findRowById(SHEETS.USERS, data.user_id);
-        await updateFullRow(SHEETS.USERS, rowNum, { ...data, full_name: result.full_name, email: result.email, role: result.role });
+        // Only send changed fields — do not spread data object
+        await updateFullRow(SHEETS.USERS, rowNum, { full_name: result.full_name, email: result.email, role: result.role });
         toast.success('User updated.');
       } else {
         const id = await generateId(SHEETS.USERS);
@@ -153,7 +154,8 @@ export async function renderUsers(container) {
     try {
       const rowNum = await findRowById(SHEETS.USERS, row.user_id);
       const newStatus = (row.is_active === 'TRUE' || row.is_active === true) ? 'FALSE' : 'TRUE';
-      await updateFullRow(SHEETS.USERS, rowNum, { ...row, is_active: newStatus });
+      // Only update is_active — do not spread row object
+      await updateFullRow(SHEETS.USERS, rowNum, { is_active: newStatus });
       toast.success('User status updated.');
       await onSave();
     } catch (err) { toast.error(err.message); }

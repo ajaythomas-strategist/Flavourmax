@@ -1,12 +1,12 @@
 // ============================================================
 // modules/master/ingredients.js — Ingredient Management
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache } from '../supabase-api.js?v=3';
-import { SHEETS } from '../config.js?v=3';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache } from '../supabase-api.js?v=4';
+import { SHEETS } from '../config.js?v=4';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal } from '../../components/modal.js';
-import { toast } from '../../components/toast.js';
-import { hasPermission } from '../auth.js?v=3';
+import { toast } from '../../components/toast.js?v=4';
+import { hasPermission } from '../auth.js?v=4';
 
 export async function renderIngredients(container) {
   const canEdit = hasPermission('master_edit');
