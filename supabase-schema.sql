@@ -275,24 +275,28 @@ CREATE INDEX IF NOT EXISTS idx_recipes_product     ON dim_recipes(product_id, co
 CREATE INDEX IF NOT EXISTS idx_processes_product   ON dim_processes(product_id);
 CREATE INDEX IF NOT EXISTS idx_proc_fields_process ON dim_process_fields(process_id);
 
--- ─── After creating tables, disable RLS on each: ────────────
--- ALTER TABLE dim_companies DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_products DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_categories DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_ingredients DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_units DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_processes DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_process_fields DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_recipes DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_users DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_warehouses DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE dim_suppliers DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_inventory_in DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_inventory_out DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_inventory_balance DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_production_batches DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_production_process_log DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_dispatch DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_sales DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_sales_return DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE fact_corrections DISABLE ROW LEVEL SECURITY;
+-- ─── Disable RLS (internal app — no row-level auth needed) ──
+ALTER TABLE dim_companies            DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_products             DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_categories           DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_ingredients          DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_units                DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_processes            DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_process_fields       DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_recipes              DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_users                DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_warehouses           DISABLE ROW LEVEL SECURITY;
+ALTER TABLE dim_suppliers            DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_inventory_in        DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_inventory_out       DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_inventory_balance   DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_production_batches  DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_production_process_log DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_dispatch            DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_sales               DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_sales_return        DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_corrections         DISABLE ROW LEVEL SECURITY;
+
+-- ─── Grant anon + authenticated full access ──────────────────
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
