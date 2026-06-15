@@ -2,10 +2,10 @@
 // modules/settings/sheets-config.js — Connection Settings
 // Web App URL (primary) or API Key fallback
 // ============================================================
-import { testConnection, initializeAllSheets, fixIsActiveStatus } from '../supabase-api.js?v=2';
+import { testConnection, initializeAllSheets, fixIsActiveStatus } from '../supabase-api.js?v=3';
 import { toast } from '../../components/toast.js';
 import { confirm } from '../../components/modal.js';
-import { CONFIG } from '../config.js?v=2';
+import { CONFIG } from '../config.js?v=3';
 
 export function renderSheetsConfig(container) {
   const savedWebApp = localStorage.getItem('fm_webapp_url') || CONFIG.WEBAPP_URL || '';

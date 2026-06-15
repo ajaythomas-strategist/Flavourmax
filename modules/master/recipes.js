@@ -2,11 +2,11 @@
 // modules/master/recipes.js — Company-Specific Recipe Management
 // Configure ingredient lists per company+product combination
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache, activeOnly, sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=2';
-import { SHEETS } from '../config.js?v=2';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache, activeOnly, sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=3';
+import { SHEETS } from '../config.js?v=3';
 import { formModal, confirm, contentModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission } from '../auth.js?v=2';
+import { hasPermission } from '../auth.js?v=3';
 
 export async function renderRecipes(container) {
   const canEdit = hasPermission('master_edit');

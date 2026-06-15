@@ -2,12 +2,12 @@
 // modules/corrections/corrections-inbox.js
 // Correction workflow — raise, approve, reject, history
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, parseSheetRows, sheetsBatchRead, readRowByNumber } from '../supabase-api.js?v=2';
-import { SHEETS, COLUMNS } from '../config.js?v=2';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, parseSheetRows, sheetsBatchRead, readRowByNumber } from '../supabase-api.js?v=3';
+import { SHEETS, COLUMNS } from '../config.js?v=3';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission, getCurrentUser } from '../auth.js?v=2';
+import { hasPermission, getCurrentUser } from '../auth.js?v=3';
 
 // ─── Correction Inbox (Admin/Supervisor) ─────────────────────
 export async function renderCorrectionsInbox(container) {

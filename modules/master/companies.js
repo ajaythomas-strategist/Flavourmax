@@ -2,12 +2,12 @@
 // modules/master/companies.js — Company Management
 // ============================================================
 import { readAllRows, sheetsAppend, findRowById, updateFullRow, softDelete,
-         generateId, getDimCache, clearDimCache, loadDimCache } from '../supabase-api.js?v=2';
-import { SHEETS } from '../config.js?v=2';
+         generateId, getDimCache, clearDimCache, loadDimCache } from '../supabase-api.js?v=3';
+import { SHEETS } from '../config.js?v=3';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission } from '../auth.js?v=2';
+import { hasPermission } from '../auth.js?v=3';
 
 export async function renderCompanies(container) {
   const canEdit = hasPermission('master_edit');

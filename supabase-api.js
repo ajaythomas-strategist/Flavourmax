@@ -5,7 +5,7 @@
 // ============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { CONFIG, SHEETS, COLUMNS, ID_PREFIXES } from './config.js?v=2';
+import { CONFIG, SHEETS, COLUMNS, ID_PREFIXES } from './config.js?v=3';
 
 // ─── Supabase Client ──────────────────────────────────────────
 let supabase;

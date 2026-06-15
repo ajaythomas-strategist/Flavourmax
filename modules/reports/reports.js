@@ -2,8 +2,8 @@
 // modules/reports/reports.js — All Reports
 // Production, Inventory, Sales, Ingredient Usage
 // ============================================================
-import { sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=2';
-import { SHEETS } from '../config.js?v=2';
+import { sheetsBatchRead, parseSheetRows } from '../supabase-api.js?v=3';
+import { SHEETS } from '../config.js?v=3';
 import { DataTable } from '../../components/data-table.js';
 import { toast } from '../../components/toast.js';
 

@@ -1,12 +1,12 @@
 // ============================================================
 // modules/settings/users.js — User Management (Admin / Super Admin)
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, hardDelete } from '../supabase-api.js?v=2';
-import { SHEETS, ROLES } from '../config.js?v=2';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, hardDelete } from '../supabase-api.js?v=3';
+import { SHEETS, ROLES } from '../config.js?v=3';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal, confirm } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission, getCurrentUser, isSuperAdmin, resetUserPassword } from '../auth.js?v=2';
+import { hasPermission, getCurrentUser, isSuperAdmin, resetUserPassword } from '../auth.js?v=3';
 
 export async function renderUsers(container) {
   if (!hasPermission('users_manage')) {

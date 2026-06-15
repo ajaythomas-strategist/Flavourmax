@@ -3,7 +3,7 @@
 // Client-side sort, search, filter, pagination, CSV export
 // ============================================================
 
-import { CONFIG } from '../config.js?v=2';
+import { CONFIG } from '../config.js?v=3';
 
 export class DataTable {
   constructor(container, { columns, data = [], actions = [], onRowClick, emptyMessage = 'No records found.' }) {

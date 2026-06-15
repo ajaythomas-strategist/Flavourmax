@@ -4,7 +4,7 @@
 // Falls back to Google Sheets REST API if Web App URL not set
 // ============================================================
 
-import { CONFIG, SHEETS, COLUMNS, ID_PREFIXES } from './config.js?v=2';
+import { CONFIG, SHEETS, COLUMNS, ID_PREFIXES } from './config.js?v=3';
 
 // ─── Runtime state ───────────────────────────────────────────
 let _accessToken = null;
