@@ -1,12 +1,12 @@
 // ============================================================
 // modules/sales/sales.js — Sales, Sales List, Sales Returns
 // ============================================================
-import { readAllRows, sheetsAppend, generateId, generateInvoiceNo, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly } from '../supabase-api.js';
-import { SHEETS, GST_RATES } from '../config.js';
+import { readAllRows, sheetsAppend, generateId, generateInvoiceNo, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly } from '../../supabase-api.js';
+import { SHEETS, GST_RATES } from '../../config.js';
 import { DataTable, statusBadge } from '../../components/data-table.js';
 import { formModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { hasPermission, getCurrentUser } from '../auth.js';
+import { hasPermission, getCurrentUser } from '../../auth.js';
 
 // ─── New Sale ─────────────────────────────────────────────────
 export async function renderNewSale(container) {
