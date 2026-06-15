@@ -3,8 +3,8 @@
 // Role-aware nav, active route highlighting, mobile drawer
 // ============================================================
 
-import { getCurrentUser, hasPermission, logout, changePassword } from '../auth.js?v=4';
-import { toast } from './toast.js?v=4';
+import { getCurrentUser, hasPermission, logout, changePassword } from '../auth.js';
+import { toast } from './toast.js';
 
 const NAV_ITEMS = [
   {

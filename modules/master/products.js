@@ -1,12 +1,12 @@
 // ============================================================
 // modules/master/products.js — Product Management
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, getDimCache, clearDimCache } from '../supabase-api.js?v=4';
-import { SHEETS } from '../config.js?v=4';
-import { DataTable, statusBadge } from '../../components/data-table.js?v=4';
-import { formModal } from '../../components/modal.js?v=4';
-import { toast } from '../../components/toast.js?v=4';
-import { hasPermission } from '../auth.js?v=4';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, getDimCache, clearDimCache } from '../supabase-api.js';
+import { SHEETS } from '../config.js';
+import { DataTable, statusBadge } from '../../components/data-table.js';
+import { formModal } from '../../components/modal.js';
+import { toast } from '../../components/toast.js';
+import { hasPermission } from '../auth.js';
 
 export async function renderProducts(container) {
   const canEdit = hasPermission('master_edit');

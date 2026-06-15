@@ -2,11 +2,11 @@
 // modules/inventory/stock-out.js — Stock Out / Adjustments
 // Desktop: horizontal table  |  Mobile: vertical card form
 // ============================================================
-import { sheetsAppend, generateId, updateInventoryBalance, sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js?v=4';
-import { SHEETS } from '../config.js?v=4';
-import { DataTable } from '../../components/data-table.js?v=4';
-import { toast } from '../../components/toast.js?v=4';
-import { hasPermission, getCurrentUser } from '../auth.js?v=4';
+import { sheetsAppend, generateId, updateInventoryBalance, sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js';
+import { SHEETS } from '../config.js';
+import { DataTable } from '../../components/data-table.js';
+import { toast } from '../../components/toast.js';
+import { hasPermission, getCurrentUser } from '../auth.js';
 
 const REASONS = ['Production Consumption', 'Wastage', 'Damaged', 'Quality Rejection', 'Other'];
 const isMobile = () => window.innerWidth <= 768;
