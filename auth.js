@@ -15,9 +15,16 @@ export function isLoggedIn() { return _currentUser !== null; }
 
 export function hasPermission(permKey) {
   if (!_currentUser) return false;
+  // Super Admin has unrestricted access to everything
+  if (_currentUser.role === 'Super Admin') return true;
   const perm = PERMISSIONS[permKey];
   if (!perm) return false;
   return perm[_currentUser.role] === true;
+}
+
+/** True only when the logged-in user is Super Admin */
+export function isSuperAdmin() {
+  return _currentUser?.role === 'Super Admin';
 }
 
 // ─── Simple Login (email + password hash lookup) ──────────────
@@ -29,7 +36,7 @@ async function sha256(str) {
 
 // ─── App Users ────────────────────────────────────────────────
 const DEMO_USERS = [
-  { user_id: 'USR-001', full_name: 'Ajay Thomas', email: 'mail@thestrategist.co.in', password: 'AjayThomas@1', role: 'Admin', is_active: 'TRUE' },
+  { user_id: 'USR-001', full_name: 'Ajay Thomas', email: 'mail@thestrategist.co.in', password: 'AjayThomas@1', role: 'Super Admin', is_active: 'TRUE' },
 ];
 
 export async function loginWithPassword(email, password) {
@@ -104,7 +111,8 @@ export async function changePassword(currentPassword, newPassword) {
 
 // ─── Reset Password (admin resets for any user) ───────────────
 export async function resetUserPassword(userId, newPassword) {
-  if (!_currentUser || _currentUser.role !== 'Admin') throw new Error('Admin only.');
+  if (!_currentUser || (_currentUser.role !== 'Admin' && _currentUser.role !== 'Super Admin'))
+    throw new Error('Admin only.');
   if (!newPassword || newPassword.length < 6) throw new Error('Password must be at least 6 characters.');
   const newHash = await sha256(newPassword);
   const rowId   = await findRowById(SHEETS.USERS, userId);
