@@ -33,11 +33,12 @@ export async function renderProducts(container) {
 
     new DataTable(tableEl, {
       columns: [
-        { key: 'product_name',  label: 'Product', sortable: true },
-        { key: 'category_id',   label: 'Category', render: (v) => escHtml(catMap[v] || v) },
+        { key: 'product_name',    label: 'Product', sortable: true },
+        { key: 'category_id',     label: 'Category', render: (v) => escHtml(catMap[v] || v) },
         { key: 'default_unit_id', label: 'Unit', render: (v) => escHtml(unitMap[v] || v) },
-        { key: 'description',   label: 'Description' },
-        { key: 'is_active',     label: 'Status', render: (v) => statusBadge((v === 'TRUE' || v === true) ? 'Active' : 'Inactive') },
+        { key: 'default_price',   label: 'Default Price (₹)', render: (v) => v ? `₹${parseFloat(v).toLocaleString('en-IN',{maximumFractionDigits:2})}` : '—' },
+        { key: 'description',     label: 'Description' },
+        { key: 'is_active',       label: 'Status', render: (v) => statusBadge((v === 'TRUE' || v === true) ? 'Active' : 'Inactive') },
       ],
       data: products,
       actions: canEdit ? [
@@ -57,12 +58,13 @@ export async function renderProducts(container) {
     const result = await formModal({
       title: data ? 'Edit Product' : 'Add Product',
       fields: [
-        { name: 'product_name',    label: 'Product Name',    type: 'text',   required: true },
-        { name: 'category_id',     label: 'Category',        type: 'select', required: true,
+        { name: 'product_name',    label: 'Product Name',       type: 'text',   required: true },
+        { name: 'category_id',     label: 'Category',           type: 'select', required: true,
           options: cats.map(c => ({ value: c.category_id, label: c.category_name })) },
-        { name: 'default_unit_id', label: 'Default Unit',    type: 'select', required: true,
+        { name: 'default_unit_id', label: 'Default Unit',       type: 'select', required: true,
           options: units.map(u => ({ value: u.unit_id, label: u.unit_name })) },
-        { name: 'description',     label: 'Description',     type: 'textarea' },
+        { name: 'default_price',   label: 'Default Price (₹)',  type: 'number', placeholder: 'e.g. 150.00' },
+        { name: 'description',     label: 'Description',        type: 'textarea' },
       ],
       data: data || {}, submitText: data ? 'Update' : 'Add Product',
     });
@@ -75,7 +77,7 @@ export async function renderProducts(container) {
         toast.success('Product updated.');
       } else {
         const id = await generateId(SHEETS.PRODUCTS);
-        await sheetsAppend(SHEETS.PRODUCTS, [[id, result.product_name, result.category_id, result.default_unit_id, result.description, 'TRUE', now, now]]);
+        await sheetsAppend(SHEETS.PRODUCTS, [[id, result.product_name, result.category_id, result.default_unit_id, result.description || '', result.default_price || '', 'TRUE', now, now]]);
         toast.success('Product added.');
       }
       clearDimCache(); await onSave();

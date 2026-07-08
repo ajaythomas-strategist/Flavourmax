@@ -83,6 +83,7 @@ export async function renderSalesOrderList(container) {
   const compMap   = Object.fromEntries(companies.map(c => [c.company_id, c.company_name]));
   const prodMap   = Object.fromEntries(products.map(p  => [p.product_id,  p.product_name]));
   const unitMap   = Object.fromEntries(units.map(u    => [u.unit_id,      u.abbreviation]));
+  const priceMap  = Object.fromEntries(products.map(p  => [p.product_id,  p.default_price || '']));
 
   // Populate company filter
   const compFilterSel = container.querySelector('#so-filter-company');
@@ -109,16 +110,18 @@ export async function renderSalesOrderList(container) {
 
     new DataTable(tableEl, {
       columns: [
-        { key: 'order_no',           label: 'Order No',   sortable: true },
-        { key: 'order_date',         label: 'Date',       sortable: true },
-        { key: 'company_id',         label: 'Company',    sortable: true, render: (v) => escHtml(compMap[v] || v) },
-        { key: 'product_id',         label: 'Product',    render: (v) => escHtml(prodMap[v] || v) },
-        { key: 'quantity',           label: 'Qty',        render: (v, r) => `${fmt(v)} ${unitMap[r.unit_id] || ''}` },
+        { key: 'order_no',           label: 'Order No',    sortable: true },
+        { key: 'order_date',         label: 'Date',        sortable: true },
+        { key: 'company_id',         label: 'Company',     sortable: true, render: (v) => escHtml(compMap[v] || v) },
+        { key: 'product_id',         label: 'Product',     render: (v) => escHtml(prodMap[v] || v) },
+        { key: 'quantity',           label: 'Qty',         render: (v, r) => `${fmt(v)} ${unitMap[r.unit_id] || ''}` },
+        { key: 'price',              label: 'Price/Unit',  render: (v) => v ? `₹${fmt(v)}` : '—' },
+        { key: 'total_amount',       label: 'Total ₹',     render: (v) => v ? `<strong>₹${fmt(v)}</strong>` : '—' },
         { key: 'expected_delivery',  label: 'Delivery By' },
-        { key: 'batch_id',           label: 'Batch',      render: (v) => v
+        { key: 'batch_id',           label: 'Batch',       render: (v) => v
             ? `<a href="#production/process-log?batch=${escHtml(v)}" style="color:var(--color-primary)">${escHtml(v)}</a>`
             : '<span style="color:var(--color-text-muted)">—</span>' },
-        { key: 'status',             label: 'Status',     render: (v) => {
+        { key: 'status',             label: 'Status',      render: (v) => {
           const map = { Pending:'gray', 'In Production':'blue', Dispatched:'green', Cancelled:'red' };
           return `<span class="badge badge--${map[v]||'gray'}">${escHtml(v)}</span>`;
         }},
@@ -155,7 +158,7 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
     `<option value="${escHtml(c.company_id)}" ${data?.company_id === c.company_id ? 'selected':''}>
       ${escHtml(c.company_name)}</option>`).join('');
   const prodOptions = products.map(p =>
-    `<option value="${escHtml(p.product_id)}" ${data?.product_id === p.product_id ? 'selected':''}>
+    `<option value="${escHtml(p.product_id)}" data-price="${escHtml(p.default_price||'')}" ${data?.product_id === p.product_id ? 'selected':''}>
       ${escHtml(p.product_name)}</option>`).join('');
   const unitOptions = units.map(u =>
     `<option value="${escHtml(u.unit_id)}" ${data?.unit_id === u.unit_id ? 'selected':''}>
@@ -190,7 +193,7 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
           <div class="form-group form-group--row">
             <div class="form-group__half">
               <label>Quantity <span class="req">*</span></label>
-              <input type="number" name="quantity" min="0.01" step="0.01" required value="${data?.quantity || ''}">
+              <input type="number" id="so-qty" name="quantity" min="0.01" step="0.01" required value="${data?.quantity || ''}">
             </div>
             <div class="form-group__half">
               <label>Unit <span class="req">*</span></label>
@@ -198,6 +201,19 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
                 <option value="">-- Unit --</option>
                 ${unitOptions}
               </select>
+            </div>
+          </div>
+          <div class="form-group form-group--row">
+            <div class="form-group__half">
+              <label>Price / Unit (₹) <span class="req">*</span></label>
+              <input type="number" id="so-price" name="price" min="0" step="0.01" required
+                placeholder="Auto-filled from product"
+                value="${data?.price || ''}">
+              <small style="color:var(--color-text-muted);font-size:0.75rem">Default from product — you can adjust</small>
+            </div>
+            <div class="form-group__half">
+              <label>Total Amount (₹)</label>
+              <input type="text" id="so-total" readonly class="input--readonly" placeholder="Auto-calculated" value="${data?.total_amount ? '₹' + fmt(data.total_amount) : ''}">
             </div>
           </div>
           <div class="form-group">
@@ -234,6 +250,39 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
   overlay.querySelector('#so-modal-cancel')?.addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
+  // ── Auto-fill price from product default + recalc total ──
+  const prodSel   = overlay.querySelector('[name=product_id]');
+  const qtyInput  = overlay.querySelector('#so-qty');
+  const priceInput = overlay.querySelector('#so-price');
+  const totalInput = overlay.querySelector('#so-total');
+
+  function recalcTotal() {
+    const qty   = parseFloat(qtyInput?.value || 0);
+    const price = parseFloat(priceInput?.value || 0);
+    const total = qty * price;
+    if (totalInput) {
+      totalInput.value = (qty > 0 && price > 0) ? '₹' + total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '';
+    }
+  }
+
+  prodSel?.addEventListener('change', () => {
+    const selectedOpt = prodSel.selectedOptions[0];
+    const defaultPrice = selectedOpt?.dataset.price || '';
+    if (defaultPrice && priceInput && !priceInput.value) {
+      priceInput.value = defaultPrice;
+    } else if (defaultPrice && priceInput) {
+      // Offer to update if product changed
+      priceInput.value = defaultPrice;
+    }
+    recalcTotal();
+  });
+
+  qtyInput?.addEventListener('input', recalcTotal);
+  priceInput?.addEventListener('input', recalcTotal);
+
+  // Trigger recalc on load if editing
+  if (data?.price) recalcTotal();
+
   overlay.querySelector('#so-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -255,6 +304,7 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
       if (isEdit) {
         const rowNum = await findRowById(SHEETS.SALES_ORDERS, data.order_id);
         if (!rowNum) throw new Error('Order not found');
+        const total = (parseFloat(vals.quantity || 0) * parseFloat(vals.price || 0)) || '';
         await updateFullRow(SHEETS.SALES_ORDERS, rowNum, {
           ...data,
           order_date:        vals.order_date,
@@ -262,6 +312,8 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
           product_id:        vals.product_id,
           quantity:          vals.quantity,
           unit_id:           vals.unit_id,
+          price:             vals.price || '',
+          total_amount:      total,
           expected_delivery: vals.expected_delivery || '',
           notes:             vals.notes || '',
           status:            vals.status || data.status,
@@ -284,6 +336,8 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
           vals.product_id,
           vals.quantity,
           vals.unit_id,
+          vals.price || '',
+          (parseFloat(vals.quantity || 0) * parseFloat(vals.price || 0)) || '',
           vals.expected_delivery || '',
           vals.notes || '',
           'Pending',

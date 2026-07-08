@@ -58,7 +58,7 @@ export const COLUMNS = {
   ],
   [SHEETS.PRODUCTS]: [
     'product_id','product_name','category_id','default_unit_id',
-    'description','is_active','created_at','updated_at'
+    'description','default_price','is_active','created_at','updated_at'
   ],
   [SHEETS.CATEGORIES]: [
     'category_id','category_name','description','is_active','created_at'
@@ -117,7 +117,7 @@ export const COLUMNS = {
   ],
   [SHEETS.SALES_ORDERS]: [
     'order_id','order_no','order_date','company_id','product_id',
-    'quantity','unit_id','expected_delivery','notes',
+    'quantity','unit_id','price','total_amount','expected_delivery','notes',
     'status','batch_id','created_by','created_at'
   ],
   [SHEETS.SALES]: [
