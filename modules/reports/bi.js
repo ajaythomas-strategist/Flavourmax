@@ -55,6 +55,54 @@ function registerChart(chart) {
   activeCharts.push(chart);
 }
 
+// Default Chart.js settings for uniform elegant aesthetics & smooth entry animations
+function defaultChartOptions(extra = {}) {
+  const isDark = document.documentElement.classList.contains('dark-mode');
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 1000,
+      easing: 'easeOutQuart'
+    },
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: textColor,
+          font: { family: 'Inter', size: 11, weight: '500' },
+          boxWidth: 12
+        }
+      },
+      tooltip: {
+        backgroundColor: isDark ? '#1e293b' : '#ffffff',
+        titleColor: isDark ? '#f8fafc' : '#0f172a',
+        bodyColor: isDark ? '#f8fafc' : '#0f172a',
+        borderColor: isDark ? '#475569' : '#e2e8f0',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 6,
+        bodyFont: { family: 'Inter', size: 12 },
+        titleFont: { family: 'Inter', size: 12, weight: '700' }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: textColor, font: { family: 'Inter', size: 10 } }
+      },
+      y: {
+        grid: { color: gridColor },
+        ticks: { color: textColor, font: { family: 'Inter', size: 10 } }
+      }
+    },
+    ...extra
+  };
+}
+
 // ─── Date Ranges & Time Intelligence Engine ───────────────────
 function calculateDateRange(preset) {
   const now = new Date();
@@ -585,16 +633,24 @@ async function renderExecutiveTab(viewport, orders, batches, dispatches, priorOr
     const orderData = dates.map(d => orders.filter(o => o.order_date === d).reduce((s,o) => s + parseFloat(o.quantity || 0), 0));
     const dispData = dates.map(d => dispatches.filter(disp => disp.dispatch_date === d).reduce((s,disp) => s + parseFloat(disp.quantity || 0), 0));
 
+    const gradOrder = ctx1.createLinearGradient(0, 0, 0, 240);
+    gradOrder.addColorStop(0, 'rgba(2, 132, 199, 0.25)');
+    gradOrder.addColorStop(1, 'rgba(2, 132, 199, 0.00)');
+
+    const gradDisp = ctx1.createLinearGradient(0, 0, 0, 240);
+    gradDisp.addColorStop(0, 'rgba(22, 163, 74, 0.25)');
+    gradDisp.addColorStop(1, 'rgba(22, 163, 74, 0.00)');
+
     const chart1 = new Chart(ctx1, {
       type: 'line',
       data: {
         labels: dates,
         datasets: [
-          { label: 'Ordered Volume', data: orderData, borderColor: '#0284c7', tension: 0.3, fill: false },
-          { label: 'Dispatched Volume', data: dispData, borderColor: '#16a34a', tension: 0.3, fill: false }
+          { label: 'Ordered Volume', data: orderData, borderColor: '#0284c7', backgroundColor: gradOrder, tension: 0.4, fill: true, borderWidth: 3, pointRadius: 4, pointHoverRadius: 6 },
+          { label: 'Dispatched Volume', data: dispData, borderColor: '#16a34a', backgroundColor: gradDisp, tension: 0.4, fill: true, borderWidth: 3, pointRadius: 4, pointHoverRadius: 6 }
         ]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart1);
   }
@@ -610,9 +666,19 @@ async function renderExecutiveTab(viewport, orders, batches, dispatches, priorOr
       type: 'bar',
       data: {
         labels: topProd.map(p => p.name),
-        datasets: [{ label: 'Revenue (₹)', data: topProd.map(p => p.sum), backgroundColor: 'rgba(2, 132, 199, 0.8)' }]
+        datasets: [{ 
+          label: 'Revenue (₹)', 
+          data: topProd.map(p => p.sum), 
+          backgroundColor: '#0284c7',
+          hoverBackgroundColor: '#0369a1',
+          borderRadius: 6
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions({
+        plugins: {
+          legend: { display: false }
+        }
+      })
     });
     registerChart(chart2);
   }
@@ -691,10 +757,10 @@ async function renderOrdersTab(viewport, orders, priorOrders, compMap, prodMap, 
         labels: ['Pending', 'In Production', 'Dispatched', 'Cancelled'],
         datasets: [{
           data: [pendingOrders, inProdOrders, dispOrders, orders.filter(o => o.status === 'Cancelled').length],
-          backgroundColor: ['#94a3b8', '#3b82f6', '#10b981', '#ef4444']
+          backgroundColor: ['#64748b', '#0284c7', '#16a34a', '#dc2626']
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart1);
   }
@@ -709,9 +775,9 @@ async function renderOrdersTab(viewport, orders, priorOrders, compMap, prodMap, 
       type: 'pie',
       data: {
         labels: sorted.map(c => c.name),
-        datasets: [{ data: sorted.map(c => c.sum), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'] }]
+        datasets: [{ data: sorted.map(c => c.sum), backgroundColor: ['#0284c7', '#16a34a', '#eab308', '#ec4899', '#8b5cf6'] }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart2);
   }
@@ -802,13 +868,17 @@ async function renderProductionTab(viewport, batches, priorBatches, allProcessLo
     const dates = [...new Set(batches.map(b => b.batch_date))].sort().slice(-15);
     const data = dates.map(d => batches.filter(b => b.batch_date === d).reduce((s,b) => s + parseFloat(b.actual_qty || b.planned_qty || 0), 0));
     
+    const gradProd = ctx.createLinearGradient(0, 0, 0, 220);
+    gradProd.addColorStop(0, 'rgba(217, 119, 6, 0.25)');
+    gradProd.addColorStop(1, 'rgba(217, 119, 6, 0.00)');
+
     const chart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: dates,
-        datasets: [{ label: 'Produced Qty', data, borderColor: '#d97706', tension: 0.3 }]
+        datasets: [{ label: 'Produced Qty', data, borderColor: '#d97706', backgroundColor: gradProd, tension: 0.4, fill: true, borderWidth: 3, pointRadius: 4, pointHoverRadius: 6 }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart);
   }
@@ -883,13 +953,20 @@ async function renderProcessTab(viewport, allProcessLogs, batches, prodMap) {
         type: 'bar',
         data: {
           labels: processedAverages.map(p => p.name),
-          datasets: [{ label: 'Avg Duration (Mins)', data: processedAverages.map(p => p.avg), backgroundColor: '#8b5cf6' }]
+          datasets: [{ 
+            label: 'Avg Duration (Mins)', 
+            data: processedAverages.map(p => p.avg), 
+            backgroundColor: '#8b5cf6',
+            hoverBackgroundColor: '#7c3aed',
+            borderRadius: 6
+          }]
         },
-        options: {
+        options: defaultChartOptions({
           indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false
-        }
+          plugins: {
+            legend: { display: false }
+          }
+        })
       });
       registerChart(chart);
     }
@@ -950,7 +1027,7 @@ async function renderInventoryTab(viewport, allBalances, allStockIn, allStockOut
         labels: Object.keys(warehouseSums),
         datasets: [{ data: Object.values(warehouseSums), backgroundColor: ['#0d9488', '#f59e0b', '#3b82f6', '#ec4899'] }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart1);
   }
@@ -963,9 +1040,14 @@ async function renderInventoryTab(viewport, allBalances, allStockIn, allStockOut
       type: 'bar',
       data: {
         labels: ['Material IN (Receipts)', 'Material OUT (Consumption)'],
-        datasets: [{ label: 'Total Movement Qty', data: [totalIn, totalOut], backgroundColor: ['#10b981', '#ef4444'] }]
+        datasets: [{ 
+          label: 'Total Movement Qty', 
+          data: [totalIn, totalOut], 
+          backgroundColor: ['#10b981', '#dc2626'],
+          borderRadius: 6
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart2);
   }
@@ -1086,9 +1168,24 @@ async function renderCustomerTab(viewport, orders, priorOrders, compMap) {
         type: 'bar',
         data: {
           labels: sortedCust.map(c => c.name),
-          datasets: [{ label: 'Revenue Generated (₹)', data: sortedCust.map(c => c.revenue), backgroundColor: '#0ea5e9' }]
+          datasets: [{ 
+            label: 'Revenue Generated (₹)', 
+            data: sortedCust.map(c => c.revenue), 
+            backgroundColor: '#0ea5e9',
+            hoverBackgroundColor: '#0284c7',
+            borderRadius: 6
+          }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: defaultChartOptions({
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => ` Revenue: ${fmtVal(context.raw)}`
+              }
+            }
+          }
+        })
       });
       registerChart(chart);
     }
@@ -1127,9 +1224,9 @@ async function renderProductTab(viewport, orders, batches, prodMap) {
       type: 'doughnut',
       data: {
         labels: sortedProd.map(p => p.name),
-        datasets: [{ data: sortedProd.map(p => p.revenue), backgroundColor: ['#ec4899', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'] }]
+        datasets: [{ data: sortedProd.map(p => p.revenue), backgroundColor: ['#ec4899', '#eab308', '#0284c7', '#16a34a', '#8b5cf6'] }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart1);
   }
@@ -1144,9 +1241,15 @@ async function renderProductTab(viewport, orders, batches, prodMap) {
       type: 'bar',
       data: {
         labels: sortedBatches.map(b => b.name),
-        datasets: [{ label: 'Batches Made', data: sortedBatches.map(b => b.cnt), backgroundColor: '#d97706' }]
+        datasets: [{ 
+          label: 'Batches Made', 
+          data: sortedBatches.map(b => b.cnt), 
+          backgroundColor: '#d97706',
+          hoverBackgroundColor: '#b45309',
+          borderRadius: 6
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: defaultChartOptions()
     });
     registerChart(chart2);
   }

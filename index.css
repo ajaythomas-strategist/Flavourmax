@@ -1774,11 +1774,12 @@ body.sidebar--open #fm-overlay { display: block; }
   color: var(--color-text);
   background: transparent;
   cursor: pointer;
-  transition: var(--transition);
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 .bi-menu-btn:hover {
   background-color: var(--color-surface);
+  transform: translateX(4px);
 }
 
 .bi-menu-btn--active {
@@ -1797,6 +1798,14 @@ body.sidebar--open #fm-overlay { display: block; }
   gap: var(--space-5);
 }
 
+.bi-viewport > .card, 
+.bi-viewport > .bi-kpi-grid, 
+.bi-viewport > .bi-charts-grid,
+.bi-viewport > .bi-unavailable-alert,
+.bi-viewport > .page-header {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* BI KPI Metrics Grid */
 .bi-kpi-grid {
   display: grid;
@@ -1813,6 +1822,14 @@ body.sidebar--open #fm-overlay { display: block; }
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.bi-kpi-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-light);
 }
 
 .bi-kpi-card__title {
