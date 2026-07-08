@@ -211,6 +211,24 @@ CREATE TABLE IF NOT EXISTS fact_dispatch (
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS fact_sales_orders (
+  order_id           TEXT PRIMARY KEY,
+  order_no           TEXT,
+  order_date         DATE,
+  company_id         TEXT,
+  product_id         TEXT,
+  quantity           NUMERIC,
+  unit_id            TEXT,
+  price              NUMERIC,
+  total_amount       NUMERIC,
+  expected_delivery  DATE,
+  notes              TEXT,
+  status             TEXT DEFAULT 'Pending',
+  batch_id           TEXT,
+  created_by         TEXT,
+  created_at         TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS fact_sales (
   sale_id      TEXT PRIMARY KEY,
   invoice_no   TEXT,
@@ -270,6 +288,7 @@ CREATE INDEX IF NOT EXISTS idx_batches_status      ON fact_production_batches(st
 CREATE INDEX IF NOT EXISTS idx_process_log_batch   ON fact_production_process_log(batch_id);
 CREATE INDEX IF NOT EXISTS idx_dispatch_date       ON fact_dispatch(dispatch_date);
 CREATE INDEX IF NOT EXISTS idx_sales_date          ON fact_sales(sale_date);
+CREATE INDEX IF NOT EXISTS idx_sales_orders_date   ON fact_sales_orders(order_date);
 CREATE INDEX IF NOT EXISTS idx_corrections_status  ON fact_corrections(status);
 CREATE INDEX IF NOT EXISTS idx_recipes_product     ON dim_recipes(product_id, company_id);
 CREATE INDEX IF NOT EXISTS idx_processes_product   ON dim_processes(product_id);
@@ -294,6 +313,7 @@ ALTER TABLE fact_production_batches  DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fact_production_process_log DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fact_dispatch            DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fact_sales               DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fact_sales_orders        DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fact_sales_return        DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fact_corrections         DISABLE ROW LEVEL SECURITY;
 

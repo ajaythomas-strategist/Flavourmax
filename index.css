@@ -1644,3 +1644,337 @@ body.sidebar--open #fm-overlay { display: block; }
 }
 .btn--amber:hover:not(:disabled) { background: var(--color-accent-soft); }
 
+/* ============================================================
+   Business Intelligence & Reporting Portal Styling
+   ============================================================ */
+
+/* ─── Dark Mode Color Theme Overrides ──────────────────────── */
+.dark-mode {
+  --color-white:       #1e293b;
+  --color-bg:          #0f172a;
+  --color-bg-card:     #1e293b;
+  --color-surface:     #334155;
+  --color-border:      #475569;
+  --color-text:        #f8fafc;
+  --color-text-muted:  #94a3b8;
+  --color-text-light:  #64748b;
+  
+  --sidebar-bg:        #0f172a;
+  --sidebar-hover:     #1e293b;
+  --sidebar-active:    #334155;
+}
+
+.dark-mode body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.dark-mode .card,
+.dark-mode .kpi-card,
+.dark-mode #fm-topbar {
+  background-color: var(--color-bg-card);
+  border-color: var(--color-border);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+}
+
+.dark-mode .data-table table {
+  background-color: var(--color-bg-card);
+}
+
+.dark-mode .data-table th {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+}
+
+.dark-mode .data-table td {
+  border-bottom-color: var(--color-border);
+}
+
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark-mode input:focus,
+.dark-mode select:focus,
+.dark-mode textarea:focus {
+  border-color: var(--color-primary-light);
+}
+
+.dark-mode .badge {
+  filter: brightness(1.2);
+}
+
+.dark-mode .badge--gray {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+/* ─── BI Dashboard Specific Layouts ────────────────────────── */
+.bi-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.bi-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.bi-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.bi-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .bi-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bi-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bi-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.bi-menu-btn:hover {
+  background-color: var(--color-surface);
+}
+
+.bi-menu-btn--active {
+  background-color: var(--color-primary);
+  color: var(--color-white) !important;
+}
+
+.dark-mode .bi-menu-btn--active {
+  background-color: var(--color-primary-light);
+}
+
+.bi-viewport {
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* BI KPI Metrics Grid */
+.bi-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.bi-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.bi-kpi-card__title {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.bi-kpi-card__value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.bi-kpi-card__compare {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  margin-top: var(--space-1);
+}
+
+.bi-kpi-card__compare--up {
+  color: var(--color-success);
+}
+
+.bi-kpi-card__compare--down {
+  color: var(--color-danger);
+}
+
+.bi-kpi-card__compare--neutral {
+  color: var(--color-text-muted);
+}
+
+/* BI Charts Grid */
+.bi-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 600px) {
+  .bi-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Full Screen Mode */
+.bi-fullscreen-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: var(--color-bg);
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+/* Alert styles for unavailable report */
+.bi-unavailable-alert {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  background-color: var(--color-bg-card);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  gap: var(--space-4);
+}
+
+.bi-unavailable-alert__icon {
+  font-size: var(--font-size-3xl);
+  color: var(--color-text-light);
+}
+
+.bi-unavailable-alert__text {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  max-width: 450px;
+}
+
+/* Exception Board warning items */
+.bi-exception-item {
+  border-left: 4px solid var(--color-danger);
+}
+.bi-exception-item--warning {
+  border-left-color: var(--color-warning);
+}
+.bi-exception-item--info {
+  border-left-color: var(--color-info);
+}
+
+/* ─── Print Stylesheets ────────────────────────────────────── */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  #fm-sidebar,
+  #fm-topbar,
+  .bi-toolbar,
+  .bi-layout > .bi-menu,
+  .btn,
+  .filter-bar,
+  .page-header button,
+  .bi-kpi-card__compare {
+    display: none !important;
+  }
+
+  #fm-app,
+  #fm-main,
+  .bi-layout,
+  .bi-viewport {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .card, 
+  .bi-kpi-card {
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 20px !important;
+    background: #ffffff !important;
+  }
+
+  .bi-charts-grid {
+    display: block !important;
+  }
+
+  .bi-charts-grid > .card {
+    width: 100% !important;
+    height: 350px !important;
+    page-break-inside: avoid;
+  }
+
+  canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .data-table table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  .data-table th, 
+  .data-table td {
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+    padding: 6px !important;
+    font-size: 10pt !important;
+  }
+}
+
+

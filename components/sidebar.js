@@ -65,13 +65,20 @@ const NAV_ITEMS = [
     label: 'Corrections', icon: '✏', route: 'corrections/inbox', perm: 'corrections_raise',
   },
   {
-    label: 'Reports', icon: '📈', perm: 'reports_view',
+    label: 'BI Dashboards', icon: '📊', perm: 'reports_view',
     children: [
-      { label: 'Production',        icon: '⚗', route: 'reports/production',       perm: 'reports_view' },
-      { label: 'Inventory',         icon: '📦', route: 'reports/inventory',        perm: 'reports_view' },
-      { label: 'Sales',             icon: '💰', route: 'reports/sales',            perm: 'reports_view' },
-      { label: 'Order Lifecycle',   icon: '🔄', route: 'reports/lifecycle',        perm: 'reports_view' },
-      { label: 'Ingredient Usage',  icon: '🧪', route: 'reports/ingredient-usage', perm: 'reports_view' },
+      { label: 'Executive Dashboard',   icon: '🏛', route: 'reports/bi?tab=executive',   perm: 'reports_view' },
+      { label: 'Order Analytics',       icon: '📋', route: 'reports/bi?tab=orders',      perm: 'reports_view' },
+      { label: 'Production & WIP',      icon: '⚗', route: 'reports/bi?tab=production',  perm: 'reports_view' },
+      { label: 'Process Analytics',     icon: '⏱', route: 'reports/bi?tab=process',     perm: 'reports_view' },
+      { label: 'Inventory & Godowns',   icon: '🏬', route: 'reports/bi?tab=inventory',   perm: 'reports_view' },
+      { label: 'Dispatch Tracking',     icon: '🚚', route: 'reports/bi?tab=dispatch',    perm: 'reports_view' },
+      { label: 'Customer Analytics',    icon: '🏢', route: 'reports/bi?tab=customer',    perm: 'reports_view' },
+      { label: 'Product Performance',   icon: '🏷', route: 'reports/bi?tab=product',     perm: 'reports_view' },
+      { label: 'Meeting Reviews',       icon: '👥', route: 'reports/bi?tab=reviews',     perm: 'reports_view' },
+      { label: 'Exception Control',     icon: '🚨', route: 'reports/bi?tab=exceptions',  perm: 'reports_view' },
+      { label: 'Labour & Shifts',       icon: '👥', route: 'reports/bi?tab=labour',      perm: 'reports_view' },
+      { label: 'Machine Performance',   icon: '⚙', route: 'reports/bi?tab=machines',    perm: 'reports_view' },
     ]
   },
   {
