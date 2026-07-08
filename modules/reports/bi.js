@@ -91,11 +91,11 @@ function defaultChartOptions(extra = {}) {
     },
     scales: {
       x: {
-        grid: { color: gridColor },
+        grid: { display: false },
         ticks: { color: textColor, font: { family: 'Inter', size: 10 } }
       },
       y: {
-        grid: { color: gridColor },
+        grid: { display: false },
         ticks: { color: textColor, font: { family: 'Inter', size: 10 } }
       }
     },
