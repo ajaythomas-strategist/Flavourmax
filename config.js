@@ -43,6 +43,7 @@ export const SHEETS = {
   PRODUCTION_BATCHES: 'fact_production_batches',
   PROCESS_LOG:        'fact_production_process_log',
   DISPATCH:           'fact_dispatch',
+  SALES_ORDERS:       'fact_sales_orders',
   SALES:              'fact_sales',
   SALES_RETURN:       'fact_sales_return',
   CORRECTIONS:        'fact_corrections',
@@ -114,6 +115,11 @@ export const COLUMNS = {
     'quantity','unit_id','vehicle_no','driver_name','notes',
     'status','created_by','created_at'
   ],
+  [SHEETS.SALES_ORDERS]: [
+    'order_id','order_no','order_date','company_id','product_id',
+    'quantity','unit_id','expected_delivery','notes',
+    'status','batch_id','created_by','created_at'
+  ],
   [SHEETS.SALES]: [
     'sale_id','invoice_no','sale_date','company_id','product_id','batch_id',
     'quantity','unit_id','rate','amount','gst_percent','gst_amount',
@@ -149,6 +155,7 @@ export const ID_PREFIXES = {
   [SHEETS.PRODUCTION_BATCHES]: 'BATCH',
   [SHEETS.PROCESS_LOG]:        'LOG',
   [SHEETS.DISPATCH]:           'DISP',
+  [SHEETS.SALES_ORDERS]:       'SO',
   [SHEETS.SALES]:              'SALE',
   [SHEETS.SALES_RETURN]:       'RET',
   [SHEETS.CORRECTIONS]:        'CORR',

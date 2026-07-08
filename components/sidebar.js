@@ -47,6 +47,21 @@ const NAV_ITEMS = [
     ]
   },
   {
+    label: 'Sales Orders', icon: '📋', perm: 'sales_view',
+    children: [
+      { label: 'New Sales Order',   icon: '➕', route: 'sales/new-order',    perm: 'sales_edit' },
+      { label: 'Sales Order List',  icon: '📄', route: 'sales/order-list',   perm: 'sales_view' },
+    ]
+  },
+  {
+    label: 'Invoices', icon: '🧾', perm: 'sales_view',
+    children: [
+      { label: 'New Invoice',   icon: '➕', route: 'sales/new-sale',    perm: 'sales_edit' },
+      { label: 'Invoice List',  icon: '📄', route: 'sales/sales-list',  perm: 'sales_view' },
+      { label: 'Sales Returns', icon: '↩', route: 'sales/sales-returns', perm: 'sales_view' },
+    ]
+  },
+  {
     label: 'Corrections', icon: '✏', route: 'corrections/inbox', perm: 'corrections_raise',
   },
   {

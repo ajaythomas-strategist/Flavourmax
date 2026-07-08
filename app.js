@@ -26,6 +26,8 @@ const ROUTES = {
   'production/process-log':      () => import('./modules/production/process-log.js').then(m => m.renderProcessLog),
   'dispatch/new-dispatch':       () => import('./modules/dispatch/dispatch.js').then(m => m.renderNewDispatch),
   'dispatch/dispatch-list':      () => import('./modules/dispatch/dispatch.js').then(m => m.renderDispatchList),
+  'sales/new-order':             () => import('./modules/sales/sales-orders.js').then(m => m.renderNewSalesOrder),
+  'sales/order-list':            () => import('./modules/sales/sales-orders.js').then(m => m.renderSalesOrderList),
   'sales/new-sale':              () => import('./modules/sales/sales.js').then(m => m.renderNewSale),
   'sales/sales-list':            () => import('./modules/sales/sales.js').then(m => m.renderSalesList),
   'sales/sales-returns':         () => import('./modules/sales/sales.js').then(m => m.renderSalesReturns),

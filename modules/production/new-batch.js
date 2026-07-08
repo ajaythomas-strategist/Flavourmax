@@ -107,7 +107,7 @@ export async function renderNewBatch(container) {
     `${SHEETS.WAREHOUSES}!A:E`,
     `${SHEETS.RECIPES}!A:J`,
     `${SHEETS.PROCESSES}!A:G`,
-    `${SHEETS.SALES}!A:P`,
+    `${SHEETS.SALES_ORDERS}!A:M`,
     `${SHEETS.INVENTORY_IN}!A:N`,
     `${SHEETS.INVENTORY_OUT}!A:K`
   ]);
@@ -119,7 +119,7 @@ export async function renderNewBatch(container) {
   const allRecipes  = activeOnly(parseSheetRows(SHEETS.RECIPES,     batchData[5].values || []));
   const allProcesses= activeOnly(parseSheetRows(SHEETS.PROCESSES,   batchData[6].values || []))
     .sort((a, b) => parseInt(a.sequence_order) - parseInt(b.sequence_order));
-  const allSales    = parseSheetRows(SHEETS.SALES,                  batchData[7].values || []);
+  const allSalesOrders = parseSheetRows(SHEETS.SALES_ORDERS,        batchData[7].values || []);
   const allStockIn  = parseSheetRows(SHEETS.INVENTORY_IN,           batchData[8].values || []);
   const allStockOut = parseSheetRows(SHEETS.INVENTORY_OUT,          batchData[9].values || []);
 
@@ -148,17 +148,23 @@ export async function renderNewBatch(container) {
     salesOrderSelect.innerHTML = '<option value="">-- Manual / No Sales Order --</option>';
     if (!cId || !pId) return;
 
-    const filtered = allSales.filter(s =>
-      s.company_id === cId &&
-      s.product_id === pId &&
-      (s.status === 'Not Started' || s.status === 'Active') &&
-      (!s.batch_id || s.batch_id === '')
+    // Filter open (Pending) sales orders for this company+product
+    const filtered = allSalesOrders.filter(o =>
+      o.company_id === cId &&
+      o.product_id === pId &&
+      (o.status === 'Pending' || o.status === 'In Production')
     );
 
-    filtered.forEach(s => {
+    if (filtered.length === 0) {
       salesOrderSelect.insertAdjacentHTML('beforeend',
-        `<option value="${escHtml(s.sale_id)}" data-qty="${s.quantity}" data-unit="${s.unit_id}">
-          ${escHtml(s.invoice_no)} (Qty: ${s.quantity} ${escHtml(unitMap[s.unit_id] || '')})
+        `<option value="" disabled style="color:var(--color-text-muted)">No open orders for this selection</option>`);
+      return;
+    }
+
+    filtered.forEach(o => {
+      salesOrderSelect.insertAdjacentHTML('beforeend',
+        `<option value="${escHtml(o.order_id)}" data-qty="${o.quantity}" data-unit="${o.unit_id}" data-orderno="${escHtml(o.order_no)}">
+          ${escHtml(o.order_no)} — Qty: ${o.quantity} ${escHtml(unitMap[o.unit_id] || '')} | Del: ${o.expected_delivery || 'Open'}
         </option>`
       );
     });
@@ -590,13 +596,24 @@ export async function renderNewBatch(container) {
         data.notes, getCurrentUser()?.user_id, now, now
       ]]);
 
-      // Link Sales Order to batch if referenced, and update status
+      // Link Sales Order to batch if referenced, and update status to In Production
       if (data.sale_id) {
-        await updateFullRow(SHEETS.SALES, data.sale_id, {
-          batch_id: batchId,
-          status: 'In Production',
-          updated_at: now
-        });
+        try {
+          const { findRowById: findRow } = await import('../../supabase-api.js');
+          const soRowNum = await findRow(SHEETS.SALES_ORDERS, data.sale_id);
+          if (soRowNum) {
+            const soRecord = allSalesOrders.find(o => o.order_id === data.sale_id);
+            if (soRecord) {
+              await updateFullRow(SHEETS.SALES_ORDERS, soRowNum, {
+                ...soRecord,
+                batch_id: batchId,
+                status: 'In Production',
+              });
+            }
+          }
+        } catch (soErr) {
+          console.warn('Could not update Sales Order status:', soErr.message);
+        }
       }
 
       for (const row of ingRows) {
