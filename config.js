@@ -91,11 +91,11 @@ export const COLUMNS = {
   ],
   [SHEETS.INVENTORY_IN]: [
     'in_id','in_date','ingredient_id','supplier','quantity','unit_id',
-    'rate','total_cost','warehouse_id','invoice_no','notes','created_by','created_at'
+    'rate','total_cost','warehouse_id','lot_no','invoice_no','notes','created_by','created_at'
   ],
   [SHEETS.INVENTORY_OUT]: [
     'out_id','out_date','ingredient_id','batch_id','quantity','unit_id',
-    'reason','created_by','created_at'
+    'reason','created_by','created_at','lot_no','warehouse_id'
   ],
   [SHEETS.INVENTORY_BALANCE]: [
     'balance_id','ingredient_id','total_in','total_out','current_balance','last_updated'
@@ -106,7 +106,7 @@ export const COLUMNS = {
   ],
   [SHEETS.PROCESS_LOG]: [
     'log_id','batch_id','process_id','process_name','step_status',
-    'field_data_json','input_qty','input_unit','output_qty','output_unit',
+    'field_data_json','quality_passed','input_qty','input_unit','output_qty','output_unit',
     'started_at','completed_at','completed_by','is_corrected','correction_ref_id'
   ],
   [SHEETS.DISPATCH]: [

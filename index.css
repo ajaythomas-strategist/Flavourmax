@@ -397,6 +397,10 @@ body.sidebar--collapsed .sidebar__footer { padding: var(--space-3) var(--space-2
   overflow: hidden;
 }
 
+.card--visible {
+  overflow: visible !important;
+}
+
 .card--warning { border-color: var(--color-warning); background: var(--color-warning-soft); }
 
 .card__header {

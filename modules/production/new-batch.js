@@ -3,7 +3,7 @@
 // Desktop: form-grid + ingredient table
 // Mobile:  stacked form fields + ingredient cards
 // ============================================================
-import { sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly } from '../../supabase-api.js';
+import { sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly, updateFullRow } from '../../supabase-api.js';
 import { SHEETS, BATCH_STATUS } from '../../config.js';
 import { toast } from '../../components/toast.js';
 import { hasPermission, getCurrentUser } from '../../auth.js';
@@ -39,6 +39,10 @@ export async function renderNewBatch(container) {
               <label for="nb-company">Company <span class="req">*</span></label>
               <select id="nb-company" name="company_id" required><option value="">-- Select Company --</option></select>
             </div>
+            <div class="form-group">
+              <label for="nb-sales-order">Sales Order Reference (Optional)</label>
+              <select id="nb-sales-order" name="sale_id"><option value="">-- Manual / No Sales Order --</option></select>
+            </div>
             <div class="form-group form-group--row">
               <div class="form-group__half">
                 <label for="nb-qty">Planned Quantity <span class="req">*</span></label>
@@ -66,15 +70,16 @@ export async function renderNewBatch(container) {
             </p>
             <!-- Desktop: table -->
             <div id="ing-table-wrap" style="overflow-x:auto">
-              <table id="ing-table" style="width:100%;border-collapse:collapse;font-size:0.875rem;min-width:580px">
+              <table id="ing-table" style="width:100%;border-collapse:collapse;font-size:0.875rem;min-width:680px">
                 <thead>
                   <tr style="background:var(--color-surface)">
-                    <th style="padding:0.4rem 0.5rem;text-align:left;min-width:180px">Ingredient</th>
-                    <th style="padding:0.4rem 0.5rem;text-align:left;width:90px">Qty</th>
-                    <th style="padding:0.4rem 0.5rem;text-align:left;width:90px">Unit</th>
-                    <th style="padding:0.4rem 0.5rem;text-align:left;width:90px">Rate (₹)</th>
-                    <th style="padding:0.4rem 0.5rem;text-align:left;width:90px">Total (₹)</th>
-                    <th style="padding:0.4rem 0.5rem;text-align:left;min-width:130px">Warehouse</th>
+                    <th style="padding:0.4rem 0.5rem;text-align:left;min-width:160px">Ingredient</th>
+                    <th style="padding:0.4rem 0.5rem;text-align:left;min-width:110px">Lot No</th>
+                    <th style="padding:0.4rem 0.5rem;text-align:left;width:80px">Qty</th>
+                    <th style="padding:0.4rem 0.5rem;text-align:left;width:80px">Unit</th>
+                    <th style="padding:0.4rem 0.5rem;text-align:left;width:80px">Rate (₹)</th>
+                    <th style="padding:0.4rem 0.5rem;text-align:left;width:80px">Total (₹)</th>
+                    <th style="padding:0.4rem 0.5rem;text-align:left;min-width:120px">Warehouse</th>
                     <th style="padding:0.4rem 0.5rem;width:36px"></th>
                   </tr>
                 </thead>
@@ -102,6 +107,9 @@ export async function renderNewBatch(container) {
     `${SHEETS.WAREHOUSES}!A:E`,
     `${SHEETS.RECIPES}!A:J`,
     `${SHEETS.PROCESSES}!A:G`,
+    `${SHEETS.SALES}!A:P`,
+    `${SHEETS.INVENTORY_IN}!A:N`,
+    `${SHEETS.INVENTORY_OUT}!A:K`
   ]);
   const products    = activeOnly(parseSheetRows(SHEETS.PRODUCTS,    batchData[0].values || []));
   const companies   = activeOnly(parseSheetRows(SHEETS.COMPANIES,   batchData[1].values || []));
@@ -111,19 +119,106 @@ export async function renderNewBatch(container) {
   const allRecipes  = activeOnly(parseSheetRows(SHEETS.RECIPES,     batchData[5].values || []));
   const allProcesses= activeOnly(parseSheetRows(SHEETS.PROCESSES,   batchData[6].values || []))
     .sort((a, b) => parseInt(a.sequence_order) - parseInt(b.sequence_order));
+  const allSales    = parseSheetRows(SHEETS.SALES,                  batchData[7].values || []);
+  const allStockIn  = parseSheetRows(SHEETS.INVENTORY_IN,           batchData[8].values || []);
+  const allStockOut = parseSheetRows(SHEETS.INVENTORY_OUT,          batchData[9].values || []);
 
   if (!document.body.contains(container)) return; // navigated away during fetch
 
   const productSelect = container.querySelector('#nb-product');
   const companySelect = container.querySelector('#nb-company');
+  const salesOrderSelect = container.querySelector('#nb-sales-order');
   const unitSelect    = container.querySelector('#nb-unit');
   const qtyInput      = container.querySelector('#nb-qty');
+
+  const unitMap = Object.fromEntries(units.map(u => [u.unit_id, u.abbreviation || u.unit_name]));
+  const whMap   = Object.fromEntries(warehouses.map(w => [w.warehouse_id, w.warehouse_name]));
 
   if (!productSelect || !companySelect || !unitSelect) return;
 
   products.forEach(p   => productSelect.insertAdjacentHTML('beforeend',  `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`));
   companies.forEach(c  => companySelect.insertAdjacentHTML('beforeend',  `<option value="${escHtml(c.company_id)}">${escHtml(c.company_name)}</option>`));
   units.forEach(u      => unitSelect.insertAdjacentHTML('beforeend',     `<option value="${escHtml(u.unit_id)}">${escHtml(u.unit_name)}</option>`));
+
+  // ── Sales Order filtering ─────────────────────────────────
+  function filterSalesOrders() {
+    const cId = companySelect.value;
+    const pId = productSelect.value;
+    if (!salesOrderSelect) return;
+    salesOrderSelect.innerHTML = '<option value="">-- Manual / No Sales Order --</option>';
+    if (!cId || !pId) return;
+
+    const filtered = allSales.filter(s =>
+      s.company_id === cId &&
+      s.product_id === pId &&
+      (s.status === 'Not Started' || s.status === 'Active') &&
+      (!s.batch_id || s.batch_id === '')
+    );
+
+    filtered.forEach(s => {
+      salesOrderSelect.insertAdjacentHTML('beforeend',
+        `<option value="${escHtml(s.sale_id)}" data-qty="${s.quantity}" data-unit="${s.unit_id}">
+          ${escHtml(s.invoice_no)} (Qty: ${s.quantity} ${escHtml(unitMap[s.unit_id] || '')})
+        </option>`
+      );
+    });
+  }
+
+  companySelect.addEventListener('change', filterSalesOrders);
+  productSelect.addEventListener('change', filterSalesOrders);
+
+  salesOrderSelect?.addEventListener('change', () => {
+    const opt = salesOrderSelect.selectedOptions[0];
+    if (opt && opt.value) {
+      qtyInput.value = opt.dataset.qty;
+      unitSelect.value = opt.dataset.unit;
+      // trigger input event so ingredient quantities rescale!
+      qtyInput.dispatchEvent(new Event('input'));
+    }
+  });
+
+  // ── Compute available lots logic ──────────────────────────
+  function getAvailableLotsForIng(ingId) {
+    const stock = {};
+    allStockIn.filter(item => item.ingredient_id === ingId).forEach(item => {
+      const lot = item.lot_no || 'No-Lot';
+      const whId = item.warehouse_id || 'No-Wh';
+      const key = `${lot}||${whId}`;
+      if (!stock[key]) {
+        stock[key] = {
+          lot_no: item.lot_no || '',
+          warehouse_id: item.warehouse_id || '',
+          total_in: 0,
+          total_out: 0,
+          rate: parseFloat(item.rate || 0)
+        };
+      }
+      stock[key].total_in += parseFloat(item.quantity || 0);
+    });
+
+    allStockOut.filter(item => item.ingredient_id === ingId).forEach(item => {
+      const lot = item.lot_no || 'No-Lot';
+      const whId = item.warehouse_id || 'No-Wh';
+      const key = `${lot}||${whId}`;
+      if (stock[key]) {
+        stock[key].total_out += parseFloat(item.quantity || 0);
+      }
+    });
+
+    const list = [];
+    for (const key in stock) {
+      const bal = stock[key].total_in - stock[key].total_out;
+      if (bal > 0) {
+        list.push({
+          lot_no: stock[key].lot_no,
+          warehouse_id: stock[key].warehouse_id,
+          balance: bal,
+          rate: stock[key].rate
+        });
+      }
+    }
+    return list;
+  }
 
   const ingOptHtml = (selectedId = '') => ingredients.map(i =>
     `<option value="${escHtml(i.ingredient_id)}"${i.ingredient_id === selectedId ? ' selected' : ''}>${escHtml(i.ingredient_name)}</option>`).join('');
@@ -135,7 +230,7 @@ export async function renderNewBatch(container) {
   // ─────────────────────────────────────────────────────────
   // MOBILE: Ingredient cards
   // ─────────────────────────────────────────────────────────
-  function addMobileCard(ingId = '', qty = '', unitId = '') {
+  function addMobileCard(ingId = '', qty = '', unitId = '', lotNo = '', warehouseId = '') {
     const wrap = container.querySelector('#ing-cards');
     const card = document.createElement('div');
     card.className = 'm-entry-form';
@@ -151,6 +246,11 @@ export async function renderNewBatch(container) {
           <option value="">Select ingredient…</option>
           ${ingOptHtml(ingId)}
         </select>
+      </div>
+
+      <div class="form-group">
+        <label>Lot No</label>
+        <select class="r-lot"><option value="">-- No Lot --</option></select>
       </div>
 
       <div class="form-row-2col">
@@ -182,21 +282,70 @@ export async function renderNewBatch(container) {
         <label>Warehouse / Godown</label>
         <select class="r-wh">
           <option value="">Select godown…</option>
-          ${whOptHtml()}
+          ${whOptHtml(warehouseId)}
         </select>
+        <p class="r-lot-bal-msg" style="font-size:0.75rem;margin-top:0.25rem;color:var(--color-primary);display:none"></p>
       </div>
     `;
 
     const ingS = card.querySelector('.r-ing');
-    const unitS = card.querySelector('.r-unit');
+    const lotS = card.querySelector('.r-lot');
+    const whS  = card.querySelector('.r-wh');
     const qtyI = card.querySelector('.r-qty');
-    const rateI = card.querySelector('.r-rate');
+    const unitS= card.querySelector('.r-unit');
+    const rateI= card.querySelector('.r-rate');
     const totI = card.querySelector('.r-total');
+    const balMsg = card.querySelector('.r-lot-bal-msg');
+
+    const updateLots = (selectedLot = '') => {
+      const ingIdVal = ingS.value;
+      if (!ingIdVal) {
+        lotS.innerHTML = '<option value="">-- No Lot --</option>';
+        whS.value = '';
+        if (balMsg) balMsg.style.display = 'none';
+        return;
+      }
+      const lots = getAvailableLotsForIng(ingIdVal);
+      lotS.innerHTML = '<option value="">-- No Lot / Custom --</option>' +
+        lots.map(l => `<option value="${escHtml(l.lot_no)}" data-wh="${escHtml(l.warehouse_id)}" data-bal="${l.balance}" data-rate="${l.rate}" ${l.lot_no === selectedLot ? 'selected' : ''}>
+          Lot: ${escHtml(l.lot_no)} (Godown: ${escHtml(whMap[l.warehouse_id] || l.warehouse_id)}, Stock: ${l.balance})
+        </option>`).join('');
+      
+      const activeOpt = lotS.selectedOptions[0];
+      if (activeOpt && activeOpt.value) {
+        whS.value = activeOpt.dataset.wh;
+        rateI.value = activeOpt.dataset.rate;
+        if (balMsg) {
+          balMsg.style.display = '';
+          balMsg.textContent = `Available Stock: ${activeOpt.dataset.bal} ${escHtml(unitMap[unitS.value] || '')}`;
+        }
+      }
+      recalc();
+    };
 
     ingS.addEventListener('change', () => {
       const ing = ingredients.find(i => i.ingredient_id === ingS.value);
       if (ing?.unit_id) unitS.value = ing.unit_id;
+      updateLots();
     });
+
+    lotS.addEventListener('change', () => {
+      const opt = lotS.selectedOptions[0];
+      if (opt && opt.value) {
+        whS.value = opt.dataset.wh;
+        rateI.value = opt.dataset.rate;
+        if (balMsg) {
+          balMsg.style.display = '';
+          balMsg.textContent = `Available Stock: ${opt.dataset.bal} ${escHtml(unitMap[unitS.value] || '')}`;
+        }
+      } else {
+        whS.value = '';
+        rateI.value = '';
+        if (balMsg) balMsg.style.display = 'none';
+      }
+      recalc();
+    });
+
     const recalc = () => {
       const t = (parseFloat(qtyI.value) || 0) * (parseFloat(rateI.value) || 0);
       totI.value = t > 0 ? t.toFixed(2) : '';
@@ -206,13 +355,16 @@ export async function renderNewBatch(container) {
     card.querySelector('.m-card-remove-btn').addEventListener('click', () => card.remove());
 
     wrap.appendChild(card);
+    if (ingId) {
+      updateLots(lotNo);
+    }
     return card;
   }
 
   // ─────────────────────────────────────────────────────────
   // DESKTOP: Ingredient table row
   // ─────────────────────────────────────────────────────────
-  function addDesktopRow(ingId = '', qty = '', unitId = '', warehouseId = '') {
+  function addDesktopRow(ingId = '', qty = '', unitId = '', lotNo = '', warehouseId = '') {
     const tbody = container.querySelector('#ingredient-rows');
     const tr = document.createElement('tr');
     tr.style.borderBottom = '1px solid var(--color-border)';
@@ -224,13 +376,19 @@ export async function renderNewBatch(container) {
         </select>
       </td>
       <td style="padding:0.3rem 0.4rem">
+        <select class="r-lot input--sm" style="width:100%">
+          <option value="">-- No Lot --</option>
+        </select>
+      </td>
+      <td style="padding:0.3rem 0.4rem">
         <input type="number" class="r-qty input--sm" value="${escHtml(qty)}" min="0.01" step="0.01" style="width:80px">
+        <div class="r-bal-label" style="font-size:0.65rem;color:var(--color-primary);display:none;white-space:nowrap"></div>
       </td>
       <td style="padding:0.3rem 0.4rem">
         <select class="r-unit input--sm">${unitOptHtml(unitId)}</select>
       </td>
       <td style="padding:0.3rem 0.4rem">
-        <input type="number" class="r-rate input--sm" min="0" step="0.01" style="width:80px" placeholder="0">
+        <input type="number" class="r-rate input--sm" min="0" step="0.01" style="width:70px" placeholder="0">
       </td>
       <td style="padding:0.3rem 0.4rem;font-weight:600" class="r-total">₹0.00</td>
       <td style="padding:0.3rem 0.4rem">
@@ -243,8 +401,63 @@ export async function renderNewBatch(container) {
         <button type="button" class="btn btn--xs btn--danger remove-row-btn" title="Remove">×</button>
       </td>
     `;
+    const ingS = tr.querySelector('.r-ing');
+    const lotS = tr.querySelector('.r-lot');
+    const whS = tr.querySelector('.r-wh');
     const qtyI = tr.querySelector('.r-qty'), rateI = tr.querySelector('.r-rate');
+    const unitS = tr.querySelector('.r-unit');
     const totC = tr.querySelector('.r-total');
+    const balLbl = tr.querySelector('.r-bal-label');
+
+    const updateLots = (selectedLot = '') => {
+      const ingIdVal = ingS.value;
+      if (!ingIdVal) {
+        lotS.innerHTML = '<option value="">-- No Lot --</option>';
+        whS.value = '';
+        if (balLbl) balLbl.style.display = 'none';
+        return;
+      }
+      const lots = getAvailableLotsForIng(ingIdVal);
+      lotS.innerHTML = '<option value="">-- No Lot / Custom --</option>' +
+        lots.map(l => `<option value="${escHtml(l.lot_no)}" data-wh="${escHtml(l.warehouse_id)}" data-bal="${l.balance}" data-rate="${l.rate}" ${l.lot_no === selectedLot ? 'selected' : ''}>
+          ${escHtml(l.lot_no)} (${l.balance})
+        </option>`).join('');
+
+      const activeOpt = lotS.selectedOptions[0];
+      if (activeOpt && activeOpt.value) {
+        whS.value = activeOpt.dataset.wh;
+        rateI.value = activeOpt.dataset.rate;
+        if (balLbl) {
+          balLbl.style.display = 'block';
+          balLbl.textContent = `Max: ${activeOpt.dataset.bal}`;
+        }
+      }
+      recalc();
+    };
+
+    ingS.addEventListener('change', () => {
+      const ing = ingredients.find(i => i.ingredient_id === ingS.value);
+      if (ing?.unit_id) unitS.value = ing.unit_id;
+      updateLots();
+    });
+
+    lotS.addEventListener('change', () => {
+      const opt = lotS.selectedOptions[0];
+      if (opt && opt.value) {
+        whS.value = opt.dataset.wh;
+        rateI.value = opt.dataset.rate;
+        if (balLbl) {
+          balLbl.style.display = 'block';
+          balLbl.textContent = `Max: ${opt.dataset.bal}`;
+        }
+      } else {
+        whS.value = '';
+        rateI.value = '';
+        if (balLbl) balLbl.style.display = 'none';
+      }
+      recalc();
+    });
+
     const recalc = () => {
       const t = (parseFloat(qtyI.value) || 0) * (parseFloat(rateI.value) || 0);
       totC.textContent = '₹' + t.toFixed(2);
@@ -252,16 +465,20 @@ export async function renderNewBatch(container) {
     qtyI.addEventListener('input', recalc);
     rateI.addEventListener('input', recalc);
     tr.querySelector('.remove-row-btn').addEventListener('click', () => tr.remove());
+
     tbody.appendChild(tr);
+    if (ingId) {
+      updateLots(lotNo);
+    }
     return tr;
   }
 
   // ── Pick correct add-row fn based on device ───────────────
-  function addIngRow(ingId = '', qty = '', unitId = '', whId = '') {
+  function addIngRow(ingId = '', qty = '', unitId = '', lotNo = '', whId = '') {
     if (isMobile()) {
-      addMobileCard(ingId, qty, unitId);
+      addMobileCard(ingId, qty, unitId, lotNo, whId);
     } else {
-      addDesktopRow(ingId, qty, unitId, whId);
+      addDesktopRow(ingId, qty, unitId, lotNo, whId);
     }
   }
 
@@ -337,8 +554,9 @@ export async function renderNewBatch(container) {
         const qty   = parseFloat(card.querySelector('.r-qty')?.value || 0);
         const unitId= card.querySelector('.r-unit')?.value;
         const rate  = parseFloat(card.querySelector('.r-rate')?.value || 0);
-        const whId  = card.querySelector('.r-wh')?.value;
-        if (ingId && qty > 0) rows.push({ ingId, qty, unitId, rate, whId });
+        const lotNo = card.querySelector('.r-lot')?.value || '';
+        const whId  = card.querySelector('.r-wh')?.value || '';
+        if (ingId && qty > 0) rows.push({ ingId, qty, unitId, rate, lotNo, whId });
       });
     } else {
       container.querySelectorAll('#ingredient-rows tr').forEach(tr => {
@@ -346,8 +564,9 @@ export async function renderNewBatch(container) {
         const qty   = parseFloat(tr.querySelector('.r-qty')?.value || 0);
         const unitId= tr.querySelector('.r-unit')?.value;
         const rate  = parseFloat(tr.querySelector('.r-rate')?.value || 0);
-        const whId  = tr.querySelector('.r-wh')?.value;
-        if (ingId && qty > 0) rows.push({ ingId, qty, unitId, rate, whId });
+        const lotNo = tr.querySelector('.r-lot')?.value || '';
+        const whId  = tr.querySelector('.r-wh')?.value || '';
+        if (ingId && qty > 0) rows.push({ ingId, qty, unitId, rate, lotNo, whId });
       });
     }
     return rows;
@@ -371,13 +590,22 @@ export async function renderNewBatch(container) {
         data.notes, getCurrentUser()?.user_id, now, now
       ]]);
 
+      // Link Sales Order to batch if referenced, and update status
+      if (data.sale_id) {
+        await updateFullRow(SHEETS.SALES, data.sale_id, {
+          batch_id: batchId,
+          status: 'In Production',
+          updated_at: now
+        });
+      }
+
       for (const row of ingRows) {
         await updateInventoryBalance(row.ingId, 0, row.qty);
         const outId = await generateId(SHEETS.INVENTORY_OUT);
         await sheetsAppend(SHEETS.INVENTORY_OUT, [[
           outId, data.batch_date, row.ingId, batchId,
           row.qty, row.unitId, 'Production Consumption',
-          getCurrentUser()?.user_id, now
+          getCurrentUser()?.user_id, now, row.lotNo, row.whId
         ]]);
       }
 

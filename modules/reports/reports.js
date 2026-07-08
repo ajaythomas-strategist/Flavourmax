@@ -254,3 +254,130 @@ export async function renderIngredientUsage(container) {
     });
   });
 }
+
+// ─── Order Lifecycle Report ──────────────────────────────────
+export async function renderLifecycleReport(container) {
+  container.innerHTML = reportHeader('Order Process Lifecycle Report', 'Tracking sales orders through production and dispatch');
+
+  const bd = await sheetsBatchRead([
+    `${SHEETS.PRODUCTS}!A:H`,
+    `${SHEETS.COMPANIES}!A:J`,
+    `${SHEETS.UNITS}!A:E`
+  ]);
+  if (!document.body.contains(container)) return;
+
+  const products  = parseSheetRows(SHEETS.PRODUCTS,  bd[0].values || []);
+  const companies = parseSheetRows(SHEETS.COMPANIES, bd[1].values || []);
+  const units     = parseSheetRows(SHEETS.UNITS,     bd[2].values || []);
+  const prodMap = Object.fromEntries(products.map(p => [p.product_id, p.product_name]));
+  const compMap = Object.fromEntries(companies.map(c => [c.company_id, c.company_name]));
+  const unitMap = Object.fromEntries(units.map(u => [u.unit_id, u.abbreviation]));
+
+  qset(container, '#rpt-extra-filters', `
+    <div style="display:flex;gap:0.5rem">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Company</label>
+        <select id="rpt-company" style="width:140px"><option value="">All Companies</option>
+          ${companies.map(c => `<option value="${escHtml(c.company_id)}">${escHtml(c.company_name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Product</label>
+        <select id="rpt-product" style="width:140px"><option value="">All Products</option>
+          ${products.map(p => `<option value="${escHtml(p.product_id)}">${escHtml(p.product_name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `);
+
+  container.querySelector('#rpt-run')?.addEventListener('click', async () => {
+    const from = container.querySelector('#rpt-from')?.value;
+    const to   = container.querySelector('#rpt-to')?.value;
+    const comp = container.querySelector('#rpt-company')?.value;
+    const prod = container.querySelector('#rpt-product')?.value;
+
+    const bd2 = await sheetsBatchRead([
+      `${SHEETS.SALES}!A:P`,
+      `${SHEETS.PRODUCTION_BATCHES}!A:L`,
+      `${SHEETS.DISPATCH}!A:M`
+    ]);
+    if (!document.body.contains(container)) return;
+
+    const sales       = parseSheetRows(SHEETS.SALES,              bd2[0].values || []);
+    const batches     = parseSheetRows(SHEETS.PRODUCTION_BATCHES,  bd2[1].values || []);
+    const dispatches  = parseSheetRows(SHEETS.DISPATCH,            bd2[2].values || []);
+
+    let filtered = sales.filter(s => s.sale_date >= from && s.sale_date <= to);
+    if (comp) filtered = filtered.filter(s => s.company_id === comp);
+    if (prod) filtered = filtered.filter(s => s.product_id === prod);
+
+    const reportData = filtered.map(s => {
+      // Find linked production batch
+      const batch = batches.find(b => b.batch_id === s.batch_id);
+      
+      // Calculate production qty
+      let prodQty = 0;
+      if (batch) {
+        prodQty = parseFloat(batch.actual_qty || batch.planned_qty || 0);
+      }
+
+      // Calculate dispatch qty for this batch/sale
+      const orderDispatches = dispatches.filter(d => d.batch_id === s.batch_id || (d.company_id === s.company_id && d.product_id === s.product_id && s.batch_id === ''));
+      const dispQty = orderDispatches.reduce((sum, d) => sum + parseFloat(d.quantity || 0), 0);
+
+      const qtyVal = parseFloat(s.quantity || 0);
+      const amtVal = parseFloat(s.total_amount || 0);
+      const rateVal = qtyVal > 0 ? (amtVal / qtyVal) : 0;
+
+      return {
+        ...s,
+        company_name: compMap[s.company_id] || s.company_id,
+        product_name: prodMap[s.product_id] || s.product_id,
+        unit: unitMap[s.unit_id] || '',
+        rate_val: rateVal,
+        prod_qty: prodQty,
+        disp_qty: dispQty
+      };
+    });
+
+    const totalQty = reportData.reduce((sum, r) => sum + parseFloat(r.quantity || 0), 0);
+    const totalAmt = reportData.reduce((sum, r) => sum + parseFloat(r.total_amount || 0), 0);
+    const totalProd = reportData.reduce((sum, r) => sum + r.prod_qty, 0);
+    const totalDisp = reportData.reduce((sum, r) => sum + r.disp_qty, 0);
+
+    const summaryEl = container.querySelector('#rpt-summary');
+    if (summaryEl) {
+      summaryEl.style.display = '';
+      summaryEl.innerHTML = `<div class="summary-pills">
+        <span class="pill">Orders: <strong>${reportData.length}</strong></span>
+        <span class="pill pill--blue">Order Qty: <strong>${fmt(totalQty)}</strong></span>
+        <span class="pill pill--green">Order Value: <strong>₹${fmt(totalAmt)}</strong></span>
+        <span class="pill pill--amber">In Production Qty: <strong>${fmt(totalProd)}</strong></span>
+        <span class="pill pill--green">Dispatched Qty: <strong>${fmt(totalDisp)}</strong></span>
+      </div>`;
+    }
+
+    const tableEl = container.querySelector('#rpt-table');
+    if (!tableEl) return;
+    new DataTable(tableEl, {
+      columns: [
+        { key: 'invoice_no',   label: 'Invoice No / Order ID' },
+        { key: 'sale_date',    label: 'Order Date', sortable: true },
+        { key: 'company_name', label: 'Company', sortable: true },
+        { key: 'product_name', label: 'Product', sortable: true },
+        { key: 'quantity',     label: 'Order Qty', render: (v, r) => `${v} ${r.unit}` },
+        { key: 'rate_val',     label: 'Rate / Unit', render: (v) => '₹' + fmt(v) },
+        { key: 'total_amount', label: 'Total Value', render: (v) => '₹' + fmt(v) },
+        { key: 'prod_qty',     label: 'Production Qty', render: (v, r) => `${fmt(v)} ${r.unit}` },
+        { key: 'disp_qty',     label: 'Dispatched Qty', render: (v, r) => `${fmt(v)} ${r.unit}` },
+        { key: 'status',       label: 'Status', render: (v) => {
+          let badgeClass = 'gray';
+          if (v === 'Dispatched' || v === 'Completed') badgeClass = 'green';
+          else if (v === 'In Production' || v === 'Active') badgeClass = 'amber';
+          return `<span class="badge badge--${badgeClass}">${escHtml(v)}</span>`;
+        }},
+      ],
+      data: reportData.reverse(),
+    });
+  });
+}

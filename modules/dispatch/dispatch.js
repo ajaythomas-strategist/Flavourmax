@@ -1,7 +1,7 @@
 // ============================================================
 // modules/dispatch/new-dispatch.js
 // ============================================================
-import { readAllRows, sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, activeOnly } from '../../supabase-api.js';
+import { readAllRows, sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, activeOnly, updateFullRow } from '../../supabase-api.js';
 import { SHEETS, BATCH_STATUS } from '../../config.js';
 import { toast } from '../../components/toast.js';
 import { hasPermission, getCurrentUser } from '../../auth.js';
@@ -53,13 +53,20 @@ export async function renderNewDispatch(container) {
     </div>
   `;
 
-  const batchData = await sheetsBatchRead([`${SHEETS.COMPANIES}!A:J`, `${SHEETS.PRODUCTS}!A:H`, `${SHEETS.PRODUCTION_BATCHES}!A:L`, `${SHEETS.UNITS}!A:E`]);
+  const batchData = await sheetsBatchRead([
+    `${SHEETS.COMPANIES}!A:J`,
+    `${SHEETS.PRODUCTS}!A:H`,
+    `${SHEETS.PRODUCTION_BATCHES}!A:L`,
+    `${SHEETS.UNITS}!A:E`,
+    `${SHEETS.SALES}!A:P`
+  ]);
   if (!document.body.contains(container)) return; // navigated away during fetch
 
   const companies = activeOnly(parseSheetRows(SHEETS.COMPANIES, batchData[0].values || []));
   const products  = activeOnly(parseSheetRows(SHEETS.PRODUCTS, batchData[1].values || []));
   const batches   = parseSheetRows(SHEETS.PRODUCTION_BATCHES, batchData[2].values || []).filter(b => b.status === BATCH_STATUS.COMPLETED);
   const units     = activeOnly(parseSheetRows(SHEETS.UNITS, batchData[3].values || []));
+  const sales     = parseSheetRows(SHEETS.SALES, batchData[4].values || []);
 
   const compSel   = container.querySelector('#disp-company');
   const prodSel   = container.querySelector('#disp-product');
@@ -89,6 +96,16 @@ export async function renderNewDispatch(container) {
     try {
       const id = await generateId(SHEETS.DISPATCH);
       await sheetsAppend(SHEETS.DISPATCH, [[id, data.dispatch_date, data.company_id, data.product_id, data.batch_id, data.quantity, data.unit_id, data.vehicle_no, data.driver_name, data.notes, 'Dispatched', getCurrentUser()?.user_id, new Date().toISOString()]]);
+      
+      // Look up and update status of matching Sales Order reference
+      const matchedOrder = sales.find(s => s.batch_id === data.batch_id);
+      if (matchedOrder) {
+        await updateFullRow(SHEETS.SALES, matchedOrder.sale_id, {
+          status: 'Dispatched',
+          updated_at: new Date().toISOString()
+        });
+      }
+
       toast.success(`Dispatch ${id} saved.`);
       e.target.reset(); e.target.querySelector('[name=dispatch_date]').value = todayStr();
     } catch (err) { toast.error(err.message); }

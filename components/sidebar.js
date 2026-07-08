@@ -21,6 +21,7 @@ const NAV_ITEMS = [
       { label: 'Recipes',         icon: '📋', route: 'master/recipes',     perm: 'master_view' },
       { label: 'Units',            icon: '⚖', route: 'master/units',       perm: 'master_view' },
       { label: 'Suppliers',       icon: '🚛', route: 'master/suppliers',   perm: 'master_view' },
+      { label: 'Godowns / Warehouses', icon: '🏬', route: 'master/warehouses', perm: 'master_view' },
     ]
   },
   {
@@ -54,6 +55,7 @@ const NAV_ITEMS = [
       { label: 'Production',        icon: '⚗', route: 'reports/production',       perm: 'reports_view' },
       { label: 'Inventory',         icon: '📦', route: 'reports/inventory',        perm: 'reports_view' },
       { label: 'Sales',             icon: '💰', route: 'reports/sales',            perm: 'reports_view' },
+      { label: 'Order Lifecycle',   icon: '🔄', route: 'reports/lifecycle',        perm: 'reports_view' },
       { label: 'Ingredient Usage',  icon: '🧪', route: 'reports/ingredient-usage', perm: 'reports_view' },
     ]
   },

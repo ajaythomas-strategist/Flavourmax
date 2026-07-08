@@ -300,3 +300,9 @@ ALTER TABLE fact_corrections         DISABLE ROW LEVEL SECURITY;
 -- ─── Grant anon + authenticated full access ──────────────────
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+
+-- ─── Schema Corrections / Updates (July 2026) ───────────────
+ALTER TABLE fact_inventory_in ADD COLUMN IF NOT EXISTS lot_no TEXT;
+ALTER TABLE fact_inventory_out ADD COLUMN IF NOT EXISTS lot_no TEXT;
+ALTER TABLE fact_inventory_out ADD COLUMN IF NOT EXISTS warehouse_id TEXT;
+ALTER TABLE fact_production_process_log ADD COLUMN IF NOT EXISTS quality_passed TEXT;

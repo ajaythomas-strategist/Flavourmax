@@ -65,18 +65,18 @@ export async function renderStockIn(container) {
   if (!canEdit) { renderHistory(); return; }
 
   // ── Shared save logic ─────────────────────────────────────
-  async function saveEntry({ ingId, qty, unitId, date, supplier, rate, total, whId, invoice }) {
+  async function saveEntry({ ingId, qty, unitId, date, supplier, rate, total, whId, lotNo, invoice }) {
     const id  = await generateId(SHEETS.INVENTORY_IN);
     const now = new Date().toISOString();
     await sheetsAppend(SHEETS.INVENTORY_IN, [[
       id, date, ingId, supplier, qty, unitId,
-      rate || '', total || '', whId, invoice || '',
+      rate || '', total || '', whId, lotNo || '', invoice || '',
       '', getCurrentUser()?.user_id, now
     ]]);
     await updateInventoryBalance(ingId, qty, 0);
     allStockIn.push({ in_id: id, in_date: date, ingredient_id: ingId, supplier,
       quantity: qty, unit_id: unitId, rate, total_cost: total, warehouse_id: whId,
-      invoice_no: invoice || '', created_by: getCurrentUser()?.user_id });
+      lot_no: lotNo || '', invoice_no: invoice || '', created_by: getCurrentUser()?.user_id });
     renderHistory();
     return id;
   }
@@ -152,6 +152,11 @@ export async function renderStockIn(container) {
         </div>
 
         <div class="form-group">
+          <label>Lot No</label>
+          <input type="text" id="m-lot" placeholder="e.g. LOT-1001" autocapitalize="characters">
+        </div>
+
+        <div class="form-group">
           <label>Invoice No</label>
           <input type="text" id="m-invoice" placeholder="e.g. INV-001" autocapitalize="characters">
         </div>
@@ -199,6 +204,7 @@ export async function renderStockIn(container) {
       const rate    = parseFloat(rateEl.value || 0);
       const total   = parseFloat(totEl.value || 0);
       const whId    = section.querySelector('#m-wh').value;
+      const lotNo   = section.querySelector('#m-lot').value.trim();
       const invoice = section.querySelector('#m-invoice').value.trim();
 
       if (!ingId)       { toast.warning('Select an ingredient.'); ingEl.focus(); return; }
@@ -209,7 +215,7 @@ export async function renderStockIn(container) {
       btn.disabled = true; btn.textContent = 'Saving…';
 
       try {
-        const id = await saveEntry({ ingId, qty, unitId, date, supplier, rate, total, whId, invoice });
+        const id = await saveEntry({ ingId, qty, unitId, date, supplier, rate, total, whId, lotNo, invoice });
 
         if (!document.body.contains(container)) return; // navigated away during save
         // Show saved card
@@ -229,6 +235,7 @@ export async function renderStockIn(container) {
               ${qty} ${escHtml(unitMap[unitId] || '')}
               ${rate ? ` · ₹${rate}/unit · Total ₹${parseFloat(total).toLocaleString('en-IN')}` : ''}
               ${supplier ? ` · ${escHtml(supplier)}` : ''}
+              ${lotNo ? ` · Lot: ${escHtml(lotNo)}` : ''}
               · ${escHtml(date)}
             </div>
             <div class="m-entry-card__id">${escHtml(id)}</div>
@@ -239,8 +246,10 @@ export async function renderStockIn(container) {
         // Reset form for next entry
         qtyEl.value = ''; rateEl.value = ''; totEl.value = '';
         const invoiceEl = section.querySelector('#m-invoice');
+        const lotEl = section.querySelector('#m-lot');
         const whEl = section.querySelector('#m-wh');
         if (invoiceEl) invoiceEl.value = '';
+        if (lotEl) lotEl.value = '';
         ingEl.value = ''; unitEl.value = '';
         if (whEl) whEl.value = '';
         ingEl.focus();
@@ -280,6 +289,7 @@ export async function renderStockIn(container) {
                 <th style="${TH}">Rate (₹)</th>
                 <th style="${TH}">Total (₹)</th>
                 <th style="${TH}">Warehouse</th>
+                <th style="${TH}">Lot No</th>
                 <th style="${TH}">Invoice No</th>
                 <th style="${TH};width:80px"></th>
               </tr>
@@ -314,7 +324,8 @@ export async function renderStockIn(container) {
       <td style="${TD}"><input type="number" class="r-rate input--sm" min="0" step="0.01" placeholder="0" style="width:80px"></td>
       <td style="${TD}"><input type="number" class="r-total input--sm" readonly placeholder="0.00" style="width:90px;background:var(--color-surface)"></td>
       <td style="${TD}"><select class="r-wh input--sm" style="min-width:120px"><option value="">-- Godown --</option>${whOpts}</select></td>
-      <td style="${TD}"><input type="text" class="r-invoice input--sm" placeholder="Invoice #" style="width:100px"></td>
+      <td style="${TD}"><input type="text" class="r-lot input--sm" placeholder="Lot No" style="width:90px"></td>
+      <td style="${TD}"><input type="text" class="r-invoice input--sm" placeholder="Invoice #" style="width:90px"></td>
       <td style="${TD};text-align:center">
         <button type="button" class="btn btn--sm btn--success r-save-btn">✓ Save</button>
         <button type="button" class="btn btn--sm btn--ghost r-remove-btn" style="margin-left:2px">×</button>
@@ -352,6 +363,7 @@ export async function renderStockIn(container) {
     const rate   = parseFloat(tr.querySelector('.r-rate').value || 0);
     const total  = parseFloat(tr.querySelector('.r-total').value || 0);
     const whId   = tr.querySelector('.r-wh').value;
+    const lotNo  = tr.querySelector('.r-lot').value.trim();
     const invoice= tr.querySelector('.r-invoice').value.trim();
 
     if (!ingId)       { toast.warning('Select an ingredient.'); return; }
@@ -362,7 +374,7 @@ export async function renderStockIn(container) {
     btn.disabled = true; btn.textContent = '…';
 
     try {
-      const id = await saveEntry({ ingId, qty, unitId, date, supplier, rate, total, whId, invoice });
+      const id = await saveEntry({ ingId, qty, unitId, date, supplier, rate, total, whId, lotNo, invoice });
       tr.classList.remove('si-entry-row');
       tr.style.background = 'color-mix(in srgb, var(--color-success) 8%, transparent)';
       tr.innerHTML = `
@@ -374,6 +386,7 @@ export async function renderStockIn(container) {
         <td style="${TD}">₹${rate || 0}</td>
         <td style="${TD}">₹${parseFloat(total || 0).toLocaleString('en-IN')}</td>
         <td style="${TD}">${escHtml(whMap[whId] || whId || '—')}</td>
+        <td style="${TD}">${escHtml(lotNo || '—')}</td>
         <td style="${TD}">${escHtml(invoice || '—')}</td>
         <td style="${TD};text-align:center"><span style="color:var(--color-success);font-weight:600">✓ Saved</span><br><small>${escHtml(id)}</small></td>
       `;
@@ -407,6 +420,7 @@ export async function renderStockIn(container) {
         { key: 'quantity',      label: 'Qty',        render: (v, r) => `${v} ${escHtml(unitMap[r.unit_id] || '')}` },
         { key: 'rate',          label: 'Rate (₹)' },
         { key: 'total_cost',    label: 'Total (₹)', render: v => `₹${parseFloat(v || 0).toLocaleString('en-IN')}` },
+        { key: 'lot_no',        label: 'Lot No' },
         { key: 'invoice_no',    label: 'Invoice No' },
         { key: 'warehouse_id',  label: 'Warehouse',  render: v => escHtml(whMap[v] || v) },
       ],

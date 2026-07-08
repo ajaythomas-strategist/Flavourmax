@@ -32,7 +32,9 @@ export async function renderStockOut(container) {
     `${SHEETS.INGREDIENTS}!A:H`,
     `${SHEETS.UNITS}!A:E`,
     `${SHEETS.PRODUCTION_BATCHES}!A:L`,
-    `${SHEETS.INVENTORY_OUT}!A:I`,
+    `${SHEETS.INVENTORY_OUT}!A:K`,
+    `${SHEETS.WAREHOUSES}!A:E`,
+    `${SHEETS.INVENTORY_IN}!A:N`,
   ]);
 
   if (!document.body.contains(container)) return; // navigated away during fetch
@@ -42,9 +44,12 @@ export async function renderStockOut(container) {
   const batches     = parseSheetRows(SHEETS.PRODUCTION_BATCHES,           batchData[2].values || [])
     .filter(b => b.status !== 'Cancelled');
   let allStockOut   = parseSheetRows(SHEETS.INVENTORY_OUT,                batchData[3].values || []);
+  const warehouses  = activeOnly(parseSheetRows(SHEETS.WAREHOUSES,        batchData[4].values || []));
+  const allStockIn  = parseSheetRows(SHEETS.INVENTORY_IN,                 batchData[5].values || []);
 
   const ingMap  = Object.fromEntries(ingredients.map(i => [i.ingredient_id, i.ingredient_name]));
   const unitMap = Object.fromEntries(units.map(u => [u.unit_id, u.abbreviation || u.unit_name]));
+  const whMap   = Object.fromEntries(warehouses.map(w => [w.warehouse_id, w.warehouse_name]));
 
   const ingOpts    = ingredients.map(i => `<option value="${escHtml(i.ingredient_id)}">${escHtml(i.ingredient_name)}</option>`).join('');
   const unitOpts   = units.map(u => `<option value="${escHtml(u.unit_id)}">${escHtml(u.unit_name)}</option>`).join('');
@@ -53,17 +58,60 @@ export async function renderStockOut(container) {
 
   if (!canEdit) { renderHistory(); return; }
 
+  // ── Compute available lots logic ──────────────────────────
+  function getAvailableLotsForIng(ingId) {
+    const stock = {};
+    // Stock In
+    allStockIn.filter(item => item.ingredient_id === ingId).forEach(item => {
+      const lot = item.lot_no || 'No-Lot';
+      const whId = item.warehouse_id || 'No-Wh';
+      const key = `${lot}||${whId}`;
+      if (!stock[key]) {
+        stock[key] = {
+          lot_no: item.lot_no || '',
+          warehouse_id: item.warehouse_id || '',
+          total_in: 0,
+          total_out: 0
+        };
+      }
+      stock[key].total_in += parseFloat(item.quantity || 0);
+    });
+
+    // Stock Out
+    allStockOut.filter(item => item.ingredient_id === ingId).forEach(item => {
+      const lot = item.lot_no || 'No-Lot';
+      const whId = item.warehouse_id || 'No-Wh';
+      const key = `${lot}||${whId}`;
+      if (stock[key]) {
+        stock[key].total_out += parseFloat(item.quantity || 0);
+      }
+    });
+
+    const list = [];
+    for (const key in stock) {
+      const bal = stock[key].total_in - stock[key].total_out;
+      if (bal > 0) {
+        list.push({
+          lot_no: stock[key].lot_no,
+          warehouse_id: stock[key].warehouse_id,
+          balance: bal
+        });
+      }
+    }
+    return list;
+  }
+
   // ── Shared save logic ─────────────────────────────────────
-  async function saveEntry({ ingId, qty, unitId, date, reason, batchId }) {
+  async function saveEntry({ ingId, qty, unitId, date, reason, batchId, whId, lotNo }) {
     const id  = await generateId(SHEETS.INVENTORY_OUT);
     const now = new Date().toISOString();
     await sheetsAppend(SHEETS.INVENTORY_OUT, [[
       id, date, ingId, batchId || '', qty, unitId, reason,
-      getCurrentUser()?.user_id, now
+      getCurrentUser()?.user_id, now, lotNo || '', whId || ''
     ]]);
     await updateInventoryBalance(ingId, 0, qty);
     allStockOut.push({ out_id: id, out_date: date, ingredient_id: ingId, batch_id: batchId,
-      quantity: qty, unit_id: unitId, reason });
+      quantity: qty, unit_id: unitId, reason, lot_no: lotNo || '', warehouse_id: whId || '' });
     renderHistory();
     return id;
   }
@@ -96,6 +144,20 @@ export async function renderStockOut(container) {
             <option value="">Select ingredient…</option>
             ${ingOpts}
           </select>
+        </div>
+
+        <div class="form-group">
+          <label>Lot No</label>
+          <select id="m-lot"><option value="">-- No Lot --</option></select>
+        </div>
+
+        <div class="form-group">
+          <label>Warehouse / Godown</label>
+          <select id="m-wh">
+            <option value="">-- Select Godown --</option>
+            ${warehouses.map(w => `<option value="${w.warehouse_id}">${w.warehouse_name}</option>`).join('')}
+          </select>
+          <p id="m-lot-bal-msg" style="font-size:0.75rem;margin-top:0.25rem;color:var(--color-primary);display:none"></p>
         </div>
 
         <div class="form-row-2col">
@@ -144,13 +206,46 @@ export async function renderStockOut(container) {
     const ingEl  = section.querySelector('#m-ing');
     const unitEl = section.querySelector('#m-unit');
     const qtyEl  = section.querySelector('#m-qty');
-
-    // Auto-fill unit from ingredient
+    const lotSelect = section.querySelector('#m-lot');
+    const whSelect = section.querySelector('#m-wh');
+    const balMsg = section.querySelector('#m-lot-bal-msg');
+ 
+    // Auto-fill unit from ingredient & load available lots
     ingEl.addEventListener('change', () => {
-      const ing = ingredients.find(i => i.ingredient_id === ingEl.value);
+      const ingId = ingEl.value;
+      const ing = ingredients.find(i => i.ingredient_id === ingId);
       if (ing?.unit_id) unitEl.value = ing.unit_id;
+
+      if (!ingId) {
+        lotSelect.innerHTML = '<option value="">-- No Lot / Custom --</option>';
+        whSelect.value = '';
+        if (balMsg) balMsg.style.display = 'none';
+        return;
+      }
+
+      const lots = getAvailableLotsForIng(ingId);
+      lotSelect.innerHTML = '<option value="">-- No Lot / Custom --</option>' +
+        lots.map(l => `<option value="${escHtml(l.lot_no)}" data-wh="${escHtml(l.warehouse_id)}" data-bal="${l.balance}">
+          Lot: ${escHtml(l.lot_no)} (Godown: ${escHtml(whMap[l.warehouse_id] || l.warehouse_id)}, Stock: ${l.balance})
+        </option>`).join('');
+      
+      whSelect.value = '';
+      if (balMsg) balMsg.style.display = 'none';
     });
 
+    lotSelect.addEventListener('change', () => {
+      const opt = lotSelect.selectedOptions[0];
+      if (opt && opt.value) {
+        whSelect.value = opt.dataset.wh;
+        if (balMsg) {
+          balMsg.style.display = '';
+          balMsg.textContent = `Available Stock: ${opt.dataset.bal} ${escHtml(unitMap[unitEl.value] || '')}`;
+        }
+      } else {
+        if (balMsg) balMsg.style.display = 'none';
+      }
+    });
+ 
     section.querySelector('#m-save-btn').addEventListener('click', async () => {
       const ingId   = ingEl.value;
       const qty     = parseFloat(qtyEl.value || 0);
@@ -158,25 +253,27 @@ export async function renderStockOut(container) {
       const date    = section.querySelector('#m-date').value;
       const reason  = section.querySelector('#m-reason').value;
       const batchId = section.querySelector('#m-batch').value;
-
+      const whId    = whSelect.value;
+      const lotNo   = lotSelect.value;
+ 
       if (!ingId)          { toast.warning('Select an ingredient.'); ingEl.focus(); return; }
       if (!qty || qty <= 0){ toast.warning('Enter a valid quantity.'); qtyEl.focus(); return; }
       if (!reason)         { toast.warning('Select a reason.'); section.querySelector('#m-reason').focus(); return; }
       if (!date)           { toast.warning('Select a date.'); return; }
-
+ 
       const btn = section.querySelector('#m-save-btn');
       btn.disabled = true; btn.textContent = 'Saving…';
-
+ 
       try {
-        const id = await saveEntry({ ingId, qty, unitId, date, reason, batchId });
-
+        const id = await saveEntry({ ingId, qty, unitId, date, reason, batchId, whId, lotNo });
+ 
         if (!document.body.contains(container)) return; // navigated away during save
         const savedSection = section.querySelector('#m-saved-section');
         const savedList    = section.querySelector('#m-saved-list');
         const countEl      = section.querySelector('#m-saved-count');
         if (savedSection) savedSection.style.display = '';
         if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
-
+ 
         const card = document.createElement('div');
         card.className = 'm-entry-card';
         card.innerHTML = `
@@ -186,21 +283,26 @@ export async function renderStockOut(container) {
             <div class="m-entry-card__detail">
               ${qty} ${escHtml(unitMap[unitId] || '')} · ${escHtml(reason)} · ${escHtml(date)}
               ${batchId ? ` · Batch: ${escHtml(batchId)}` : ''}
+              ${lotNo ? ` · Lot: ${escHtml(lotNo)}` : ''}
+              ${whId ? ` · Godown: ${escHtml(whMap[whId] || whId)}` : ''}
             </div>
             <div class="m-entry-card__id">${escHtml(id)}</div>
           </div>
         `;
         if (savedList) savedList.insertBefore(card, savedList.firstChild);
-
+ 
         // Reset form for next entry
         qtyEl.value = '';
         ingEl.value = ''; unitEl.value = '';
+        lotSelect.innerHTML = '<option value="">-- No Lot / Custom --</option>';
+        whSelect.value = '';
+        if (balMsg) balMsg.style.display = 'none';
         const reasonEl = section.querySelector('#m-reason');
         const batchElF = section.querySelector('#m-batch');
         if (reasonEl) reasonEl.value = '';
         if (batchElF) batchElF.value = '';
         ingEl.focus();
-
+ 
         toast.success(`Saved — ${ingMap[ingId] || ingId}`);
       } catch (err) {
         toast.error(err.message);
@@ -227,11 +329,13 @@ export async function renderStockOut(container) {
           </div>
         </div>
         <div class="card__body" style="padding:0;overflow-x:auto">
-          <table id="so-entry-table" style="width:100%;border-collapse:collapse;min-width:750px">
+          <table id="so-entry-table" style="width:100%;border-collapse:collapse;min-width:950px">
             <thead>
               <tr style="background:var(--color-surface);border-bottom:2px solid var(--color-border)">
                 <th style="${TH}">Date</th>
                 <th style="${TH}">Ingredient <span class="req">*</span></th>
+                <th style="${TH}">Lot No</th>
+                <th style="${TH}">Godown</th>
                 <th style="${TH}">Qty <span class="req">*</span></th>
                 <th style="${TH}">Unit</th>
                 <th style="${TH}">Reason <span class="req">*</span></th>
@@ -262,10 +366,17 @@ export async function renderStockOut(container) {
     tr.style.borderBottom = '1px solid var(--color-border)';
     tr.innerHTML = `
       <td style="${TD}"><input type="date" class="r-date input--sm" value="${todayStr()}" style="width:120px"></td>
-      <td style="${TD}"><select class="r-ing input--sm" style="min-width:160px"><option value="">-- Select --</option>${ingOpts}</select></td>
+      <td style="${TD}"><select class="r-ing input--sm" style="min-width:150px"><option value="">-- Select --</option>${ingOpts}</select></td>
+      <td style="${TD}"><select class="r-lot input--sm" style="min-width:120px"><option value="">-- No Lot --</option></select></td>
+      <td style="${TD}">
+        <select class="r-wh input--sm" style="min-width:130px">
+          <option value="">-- Select Godown --</option>
+          ${warehouses.map(w => `<option value="${w.warehouse_id}">${w.warehouse_name}</option>`).join('')}
+        </select>
+      </td>
       <td style="${TD}"><input type="number" class="r-qty input--sm" min="0.01" step="0.01" placeholder="0" style="width:80px"></td>
       <td style="${TD}"><select class="r-unit input--sm" style="width:80px"><option value="">--</option>${unitOpts}</select></td>
-      <td style="${TD}"><select class="r-reason input--sm" style="min-width:160px"><option value="">-- Reason --</option>${reasonOpts}</select></td>
+      <td style="${TD}"><select class="r-reason input--sm" style="min-width:130px"><option value="">-- Reason --</option>${reasonOpts}</select></td>
       <td style="${TD}"><select class="r-batch input--sm" style="min-width:120px"><option value="">-- None --</option>${batchOpts}</select></td>
       <td style="${TD};text-align:center">
         <button type="button" class="btn btn--sm btn--success r-save-btn">✓ Save</button>
@@ -274,10 +385,34 @@ export async function renderStockOut(container) {
     `;
 
     const ingS = tr.querySelector('.r-ing'), unitS = tr.querySelector('.r-unit');
+    const lotS = tr.querySelector('.r-lot'), whS = tr.querySelector('.r-wh');
+
     ingS.addEventListener('change', () => {
-      const ing = ingredients.find(i => i.ingredient_id === ingS.value);
+      const ingId = ingS.value;
+      const ing = ingredients.find(i => i.ingredient_id === ingId);
       if (ing?.unit_id) unitS.value = ing.unit_id;
+
+      if (!ingId) {
+        lotS.innerHTML = '<option value="">-- No Lot --</option>';
+        whS.value = '';
+        return;
+      }
+
+      const lots = getAvailableLotsForIng(ingId);
+      lotS.innerHTML = '<option value="">-- No Lot --</option>' +
+        lots.map(l => `<option value="${escHtml(l.lot_no)}" data-wh="${escHtml(l.warehouse_id)}" data-bal="${l.balance}">
+          ${escHtml(l.lot_no)} (${l.balance})
+        </option>`).join('');
+      whS.value = '';
     });
+
+    lotS.addEventListener('change', () => {
+      const opt = lotS.selectedOptions[0];
+      if (opt && opt.value) {
+        whS.value = opt.dataset.wh;
+      }
+    });
+
     tr.querySelector('.r-remove-btn').addEventListener('click', () => {
       tr.remove();
       if (!container.querySelector('#so-entry-body .so-entry-row')) addDesktopRow();
@@ -293,6 +428,8 @@ export async function renderStockOut(container) {
     const date   = tr.querySelector('.r-date').value;
     const reason = tr.querySelector('.r-reason').value;
     const batchId= tr.querySelector('.r-batch').value;
+    const lotNo  = tr.querySelector('.r-lot').value;
+    const whId   = tr.querySelector('.r-wh').value;
 
     if (!ingId)       { toast.warning('Select an ingredient.'); return; }
     if (!qty || qty <= 0) { toast.warning('Enter a valid quantity.'); return; }
@@ -303,12 +440,14 @@ export async function renderStockOut(container) {
     btn.disabled = true; btn.textContent = '…';
 
     try {
-      const id = await saveEntry({ ingId, qty, unitId, date, reason, batchId });
+      const id = await saveEntry({ ingId, qty, unitId, date, reason, batchId, whId, lotNo });
       tr.classList.remove('so-entry-row');
       tr.style.background = 'color-mix(in srgb, var(--color-success) 8%, transparent)';
       tr.innerHTML = `
         <td style="${TD}">${escHtml(date)}</td>
         <td style="${TD}"><strong>${escHtml(ingMap[ingId] || ingId)}</strong></td>
+        <td style="${TD}">${escHtml(lotNo || '—')}</td>
+        <td style="${TD}">${escHtml(whMap[whId] || whId || '—')}</td>
         <td style="${TD}">${qty}</td>
         <td style="${TD}">${escHtml(unitMap[unitId] || unitId)}</td>
         <td style="${TD}">${escHtml(reason)}</td>
@@ -332,9 +471,11 @@ export async function renderStockOut(container) {
         { key: 'out_id',        label: 'ID' },
         { key: 'out_date',      label: 'Date', sortable: true },
         { key: 'ingredient_id', label: 'Ingredient', render: v => escHtml(ingMap[v] || v) },
-        { key: 'quantity',      label: 'Qty', render: (v, r) => `${v} ${escHtml(unitMap[r.unit_id] || '')}` },
+        { key: 'lot_no',        label: 'Lot No',     render: v => escHtml(v || '—') },
+        { key: 'warehouse_id',  label: 'Godown',     render: v => escHtml(whMap[v] || v || '—') },
+        { key: 'quantity',      label: 'Qty',        render: (v, r) => `${v} ${escHtml(unitMap[r.unit_id] || '')}` },
         { key: 'reason',        label: 'Reason' },
-        { key: 'batch_id',      label: 'Batch', render: v => escHtml(v || '—') },
+        { key: 'batch_id',      label: 'Batch',      render: v => escHtml(v || '—') },
       ],
       data: [...allStockOut].reverse(),
       emptyMessage: 'No stock-out records yet.',

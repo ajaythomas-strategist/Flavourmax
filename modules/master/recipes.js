@@ -14,7 +14,7 @@ export async function renderRecipes(container) {
     <div class="page-header">
       <div><h1 class="page-title">Recipes</h1><p class="page-subtitle">Company-specific ingredient compositions per product</p></div>
     </div>
-    <div class="card">
+    <div class="card card--visible">
       <div class="card__body">
         <div class="recipe-selector">
           <div class="form-group">

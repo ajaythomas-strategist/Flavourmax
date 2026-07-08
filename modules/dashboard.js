@@ -1,5 +1,5 @@
 // ============================================================
-// modules/dashboard.js — KPI Dashboard
+// modules/dashboard.js — KPI Dashboard with Chart.js Charts
 // ============================================================
 import { sheetsBatchRead, parseSheetRows, activeOnly } from '../supabase-api.js';
 import { SHEETS } from '../config.js';
@@ -14,6 +14,18 @@ export async function renderDashboard(container) {
     <div class="kpi-grid" id="kpi-grid">
       ${[1,2,3,4,5,6].map(() => `<div class="kpi-card kpi-card--loading"><div class="skeleton skeleton--kpi"></div></div>`).join('')}
     </div>
+    
+    <div class="dashboard-charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:1.5rem;margin-bottom:1.5rem">
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">📈 Quantities Timeline (Last 30 Days)</h3></div>
+        <div class="card__body" style="position:relative;height:260px"><canvas id="qtyTimelineChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">⭐ Product Sales Performance</h3></div>
+        <div class="card__body" style="position:relative;height:260px"><canvas id="productPerfChart"></canvas></div>
+      </div>
+    </div>
+
     <div class="dashboard-grid">
       <div class="card" id="dash-recent-batches">
         <div class="card__header">
@@ -47,6 +59,7 @@ export async function renderDashboard(container) {
     // Fetch all data with a 20-second timeout to prevent infinite loading
     const _fetchTimeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Dashboard data timed out. Check your Supabase connection.')), 20_000));
+    
     const dashData = await Promise.race([
       sheetsBatchRead([
         `${SHEETS.PRODUCTION_BATCHES}!A:L`,
@@ -56,9 +69,12 @@ export async function renderDashboard(container) {
         `${SHEETS.CORRECTIONS}!A:N`,
         `${SHEETS.PROCESS_LOG}!A:O`,
         `${SHEETS.PROCESSES}!A:G`,
+        `${SHEETS.SALES}!A:P`,
+        `${SHEETS.PRODUCTS}!A:H`
       ]),
       _fetchTimeout,
     ]);
+
     const batches      = parseSheetRows(SHEETS.PRODUCTION_BATCHES, dashData[0].values || []);
     const balances     = parseSheetRows(SHEETS.INVENTORY_BALANCE,  dashData[1].values || []);
     const ingredients  = parseSheetRows(SHEETS.INGREDIENTS,        dashData[2].values || []);
@@ -66,9 +82,12 @@ export async function renderDashboard(container) {
     const corrections  = parseSheetRows(SHEETS.CORRECTIONS,        dashData[4].values || []);
     const processLogs  = parseSheetRows(SHEETS.PROCESS_LOG,        dashData[5].values || []);
     const processesAll = parseSheetRows(SHEETS.PROCESSES,          dashData[6].values || []);
+    const sales        = parseSheetRows(SHEETS.SALES,              dashData[7].values || []);
+    const products     = parseSheetRows(SHEETS.PRODUCTS,           dashData[8].values || []);
 
     const processes  = activeOnly(processesAll);
     const totalSteps = processes.length;
+    const prodMap = Object.fromEntries(products.map(p => [p.product_id, p.product_name]));
 
     // KPIs
     const activeBatches      = batches.filter(b => b.status === 'In Progress');
@@ -95,6 +114,151 @@ export async function renderDashboard(container) {
       ${kpiCard('📦', 'Dispatched This Month',dispatchedThisMonth,     'consignments sent',    'kpi--blue')}
       ${kpiCard('✏', 'Pending Corrections',  pendingCorrections,      'awaiting approval',    pendingCorrections > 0 ? 'kpi--red' : 'kpi--green', '#corrections/inbox')}
     `);
+
+    // ── Render ChartJS Charts ──────────────────────────────────
+    try {
+      const Chart = await loadChartJS();
+      if (!document.body.contains(container)) return;
+
+      // 1. Quantities Timeline (Last 30 Days)
+      const dateLabels = [];
+      const dateMap = {};
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const str = d.toISOString().slice(0, 10);
+        dateLabels.push(str);
+        dateMap[str] = { orderQty: 0, prodQty: 0, dispQty: 0 };
+      }
+
+      sales.forEach(s => {
+        if (s.sale_date && dateMap[s.sale_date]) {
+          dateMap[s.sale_date].orderQty += parseFloat(s.quantity || 0);
+        }
+      });
+
+      batches.forEach(b => {
+        if (b.batch_date && dateMap[b.batch_date]) {
+          dateMap[b.batch_date].prodQty += parseFloat(b.actual_qty || b.planned_qty || 0);
+        }
+      });
+
+      dispatches.forEach(d => {
+        if (d.dispatch_date && dateMap[d.dispatch_date]) {
+          dateMap[d.dispatch_date].dispQty += parseFloat(d.quantity || 0);
+        }
+      });
+
+      const orderData = dateLabels.map(d => dateMap[d].orderQty);
+      const prodData = dateLabels.map(d => dateMap[d].prodQty);
+      const dispData = dateLabels.map(d => dateMap[d].dispQty);
+
+      const displayLabels = dateLabels.map(d => {
+        const parts = d.split('-');
+        const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${mNames[parseInt(parts[1])-1]} ${parseInt(parts[2])}`;
+      });
+
+      const ctxTimeline = container.querySelector('#qtyTimelineChart')?.getContext('2d');
+      if (ctxTimeline) {
+        new Chart(ctxTimeline, {
+          type: 'line',
+          data: {
+            labels: displayLabels,
+            datasets: [
+              {
+                label: 'Ordered Qty',
+                data: orderData,
+                borderColor: '#0284c7',
+                backgroundColor: 'rgba(2, 132, 199, 0.05)',
+                tension: 0.35,
+                fill: true,
+                borderWidth: 2
+              },
+              {
+                label: 'Production Qty',
+                data: prodData,
+                borderColor: '#d97706',
+                backgroundColor: 'rgba(217, 119, 6, 0.05)',
+                tension: 0.35,
+                fill: true,
+                borderWidth: 2
+              },
+              {
+                label: 'Dispatched Qty',
+                data: dispData,
+                borderColor: '#16a34a',
+                backgroundColor: 'rgba(22, 163, 74, 0.05)',
+                tension: 0.35,
+                fill: true,
+                borderWidth: 2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } },
+              tooltip: { intersect: false, mode: 'index' }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } },
+              y: { ticks: { font: { size: 9 } } }
+            }
+          }
+        });
+      }
+
+      // 2. Product Sales Performance (Orders Amount)
+      const productSales = {};
+      sales.forEach(s => {
+        const pId = s.product_id;
+        if (!pId) return;
+        if (!productSales[pId]) productSales[pId] = 0;
+        productSales[pId] += parseFloat(s.total_amount || 0);
+      });
+
+      const topProducts = Object.entries(productSales)
+        .map(([pId, val]) => ({ name: prodMap[pId] || pId, value: val }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      const ctxPerf = container.querySelector('#productPerfChart')?.getContext('2d');
+      if (ctxPerf) {
+        new Chart(ctxPerf, {
+          type: 'bar',
+          data: {
+            labels: topProducts.map(p => p.name),
+            datasets: [{
+              label: 'Total Orders (₹)',
+              data: topProducts.map(p => p.value),
+              backgroundColor: [
+                'rgba(2, 132, 199, 0.8)',
+                'rgba(22, 163, 74, 0.8)',
+                'rgba(217, 119, 6, 0.8)',
+                'rgba(220, 38, 38, 0.8)',
+                'rgba(147, 51, 234, 0.8)'
+              ],
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx) => ` ₹${ctx.raw.toLocaleString('en-IN')}` } }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+              y: { ticks: { font: { size: 9 }, callback: (v) => '₹' + v.toLocaleString('en-IN') } }
+            }
+          }
+        });
+      }
+    } catch (chartErr) {
+      console.warn('Chart.js render error:', chartErr);
+    }
 
     // ── Recent Batches ────────────────────────────────────────
     const recentBatches = [...batches]
@@ -164,6 +328,17 @@ export async function renderDashboard(container) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────
+
+async function loadChartJS() {
+  if (window.Chart) return window.Chart;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = () => resolve(window.Chart);
+    script.onerror = () => reject(new Error('Failed to load Chart.js'));
+    document.head.appendChild(script);
+  });
+}
 
 function kpiCard(icon, label, value, sub, cls = '', link = '') {
   const inner = `

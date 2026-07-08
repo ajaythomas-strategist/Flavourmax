@@ -163,12 +163,16 @@ export async function renderProcessLog(container, params = {}) {
     // IO bar — bottom (Output)
     let outputBarHtml = '';
     if (isReadOnly) {
+      const qPassedVal = log?.quality_passed || '';
       outputBarHtml = `
-        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;background:var(--color-bg-light);border-radius:6px;margin-top:0.75rem;font-size:0.875rem">
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;background:var(--color-bg-light);border-radius:6px;margin-top:0.75rem;font-size:0.875rem;flex-wrap:wrap">
           <span style="color:var(--color-text-muted)">📤 Output:</span>
           <strong>${outputQty ? `${escHtml(String(outputQty))} ${escHtml(outputUnitName)}` : '—'}</strong>
+          <span style="color:var(--color-text-muted);margin-left:auto">Quality Check:</span>
+          <span class="badge badge--${qPassedVal === 'TRUE' ? 'green' : 'red'}">${qPassedVal === 'TRUE' ? 'Passed' : 'Failed'}</span>
         </div>`;
     } else {
+      const qPassedVal = log?.quality_passed || 'TRUE';
       outputBarHtml = `
         <div style="padding:0.6rem 0.75rem;background:var(--color-bg-light);border-radius:6px;margin-top:0.75rem">
           <div style="display:flex;align-items:center;gap:0.75rem;font-size:0.875rem;flex-wrap:wrap">
@@ -179,6 +183,14 @@ export async function renderProcessLog(container, params = {}) {
               ${units.map(u => `<option value="${escHtml(u.unit_id)}"${u.unit_id === outputUnit ? ' selected' : ''}>${escHtml(u.unit_name)}</option>`).join('')}
             </select>
             <span id="wastage-live-${proc.process_id}" style="font-size:0.8rem"></span>
+            
+            <div style="margin-left:auto;display:flex;align-items:center;gap:0.5rem">
+              <span style="color:var(--color-text-muted)">Quality Passed?</span>
+              <select name="quality_passed" class="input--sm" style="width:80px">
+                <option value="TRUE"${qPassedVal === 'TRUE' ? ' selected' : ''}>Yes</option>
+                <option value="FALSE"${qPassedVal === 'FALSE' ? ' selected' : ''}>No</option>
+              </select>
+            </div>
           </div>
         </div>`;
     }
@@ -463,6 +475,7 @@ async function saveFormDraft(form, fields, isAutosave = false) {
   const outputUnit = formData.get('output_unit') || '';
   const inputQty   = form.dataset.inputQty  || '';
   const inputUnit  = form.dataset.inputUnit || '';
+  const qualityPassed = formData.get('quality_passed') || '';
 
   try {
     const allLogs = await readAllRows(SHEETS.PROCESS_LOG);
@@ -473,6 +486,7 @@ async function saveFormDraft(form, fields, isAutosave = false) {
         await updateFullRow(SHEETS.PROCESS_LOG, rowNum, {
           ...log,
           field_data_json: JSON.stringify(data),
+          quality_passed:  qualityPassed,
           input_qty:   inputQty,
           input_unit:  inputUnit,
           output_qty:  outputQty,
@@ -505,6 +519,7 @@ async function completeProcessStep(batchId, procId, form, fields, logs, processe
 
   const outputQty  = formData.get('output_qty')  || '';
   const outputUnit = formData.get('output_unit') || '';
+  const qualityPassed = formData.get('quality_passed') || '';
   if (!outputQty) throw new Error('Output Quantity is required to complete this step.');
 
   const inputQty  = form.dataset.inputQty  || '';
@@ -520,6 +535,7 @@ async function completeProcessStep(batchId, procId, form, fields, logs, processe
       ...log,
       step_status:     'Completed',
       field_data_json: JSON.stringify(data),
+      quality_passed:  qualityPassed,
       input_qty:       inputQty,
       input_unit:      inputUnit,
       output_qty:      outputQty,
