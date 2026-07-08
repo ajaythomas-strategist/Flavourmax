@@ -259,8 +259,8 @@ export async function renderBIDashboard(container, params) {
       <div class="filter-bar card">
         <div class="card__body filter-bar__inner" style="gap:var(--space-3)">
           <div class="form-group" style="margin-bottom:0">
-            <label>Date Range Preset</label>
-            <select id="bi-preset-date" style="width:140px">
+            <label>Date Preset</label>
+            <select id="bi-preset-date" style="width:130px">
               <option value="today" ${STATE.datePreset==='today'?'selected':''}>Today</option>
               <option value="yesterday" ${STATE.datePreset==='yesterday'?'selected':''}>Yesterday</option>
               <option value="this-week" ${STATE.datePreset==='this-week'?'selected':''}>This Week</option>
@@ -273,12 +273,16 @@ export async function renderBIDashboard(container, params) {
               <option value="last-year" ${STATE.datePreset==='last-year'?'selected':''}>Last Year</option>
               <option value="financial-year" ${STATE.datePreset==='financial-year'?'selected':''}>Financial Year</option>
               <option value="rolling-12" ${STATE.datePreset==='rolling-12'?'selected':''}>Rolling 12 Months</option>
-              <option value="custom" ${STATE.datePreset==='custom'?'selected':''}>-- Custom Range --</option>
+              <option value="custom" ${STATE.datePreset==='custom'?'selected':''}>Custom Range</option>
             </select>
           </div>
-          <div class="form-group" id="bi-custom-dates-wrap" style="display:${STATE.datePreset==='custom'?'flex':'none'};gap:var(--space-2);margin-bottom:0">
-            <div class="form-group" style="margin-bottom:0"><label>From</label><input type="date" id="bi-from-date" value="${STATE.fromDate}"></div>
-            <div class="form-group" style="margin-bottom:0"><label>To</label><input type="date" id="bi-to-date" value="${STATE.toDate}"></div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Start Date</label>
+            <input type="date" id="bi-from-date" value="${STATE.fromDate}" style="width:135px">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>End Date</label>
+            <input type="date" id="bi-to-date" value="${STATE.toDate}" style="width:135px">
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label>Customer</label>
@@ -342,22 +346,27 @@ export async function renderBIDashboard(container, params) {
 
   // Bind Date presets selection
   const presetSel = container.querySelector('#bi-preset-date');
-  const datesWrap = container.querySelector('#bi-custom-dates-wrap');
+  const fromInput = container.querySelector('#bi-from-date');
+  const toInput = container.querySelector('#bi-to-date');
+
   presetSel?.addEventListener('change', (e) => {
     STATE.datePreset = e.target.value;
-    if (STATE.datePreset === 'custom') {
-      if (datesWrap) datesWrap.style.display = 'flex';
-    } else {
-      if (datesWrap) datesWrap.style.display = 'none';
+    if (STATE.datePreset !== 'custom') {
       const range = calculateDateRange(STATE.datePreset);
       STATE.fromDate = range.start;
       STATE.toDate = range.end;
-      const fromInput = container.querySelector('#bi-from-date');
-      const toInput = container.querySelector('#bi-to-date');
       if (fromInput) fromInput.value = range.start;
       if (toInput) toInput.value = range.end;
     }
   });
+
+  // If user adjusts dates manually, change preset to "custom"
+  const markCustomDate = () => {
+    STATE.datePreset = 'custom';
+    if (presetSel) presetSel.value = 'custom';
+  };
+  fromInput?.addEventListener('change', markCustomDate);
+  toInput?.addEventListener('change', markCustomDate);
 
   // Populate dynamic reference filters
   const bd = await sheetsBatchRead([`${SHEETS.COMPANIES}!A:J`, `${SHEETS.PRODUCTS}!A:H`]);
@@ -372,10 +381,8 @@ export async function renderBIDashboard(container, params) {
 
   // Run Dashboard trigger
   container.querySelector('#bi-run-filters')?.addEventListener('click', () => {
-    if (STATE.datePreset === 'custom') {
-      STATE.fromDate = container.querySelector('#bi-from-date')?.value || '';
-      STATE.toDate = container.querySelector('#bi-to-date')?.value || '';
-    }
+    STATE.fromDate = fromInput?.value || '';
+    STATE.toDate = toInput?.value || '';
     STATE.companyId = container.querySelector('#bi-company-filter')?.value || '';
     STATE.productId = container.querySelector('#bi-product-filter')?.value || '';
     renderActiveTab(container.querySelector('#bi-viewport'), companies, products);
