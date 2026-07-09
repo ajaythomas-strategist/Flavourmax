@@ -203,7 +203,7 @@ export async function renderDashboard(container) {
             },
             scales: {
               x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } },
-              y: { grid: { display: false }, ticks: { font: { size: 9 } } }
+              y: { ticks: { font: { size: 9 } } }
             }
           }
         });
@@ -251,7 +251,7 @@ export async function renderDashboard(container) {
             },
             scales: {
               x: { grid: { display: false }, ticks: { font: { size: 9 } } },
-              y: { grid: { display: false }, ticks: { font: { size: 9 }, callback: (v) => '₹' + v.toLocaleString('en-IN') } }
+              y: { ticks: { font: { size: 9 }, callback: (v) => '₹' + v.toLocaleString('en-IN') } }
             }
           }
         });
