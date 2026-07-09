@@ -147,12 +147,12 @@ export async function renderSalesOrderList(container) {
 
 // ─── New Sales Order Form ────────────────────────────────────
 async function openSalesOrderForm(data, companies, products, units, onSave) {
-  // Build a modal-style inline form
+  // Build a modal-style inline form using the native dialog + fm-modal styles
   const isEdit = !!data;
 
-  // Create a floating panel
-  const overlay = document.createElement('div');
-  overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem`;
+  // Create a native dialog element using the modal CSS architecture
+  const dialog = document.createElement('dialog');
+  dialog.className = 'fm-modal fm-modal--md';
 
   const compOptions = companies.map(c =>
     `<option value="${escHtml(c.company_id)}" ${data?.company_id === c.company_id ? 'selected':''}>
@@ -164,97 +164,104 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
     `<option value="${escHtml(u.unit_id)}" ${data?.unit_id === u.unit_id ? 'selected':''}>
       ${escHtml(u.unit_name)} (${escHtml(u.abbreviation)})</option>`).join('');
 
-  overlay.innerHTML = `
-    <div class="card" style="width:100%;max-width:560px;margin:0;overflow:visible">
-      <div class="card__header">
-        <h3 class="card__title">${isEdit ? '✏ Edit Sales Order' : '📋 New Sales Order'}</h3>
-        <button class="btn btn--ghost btn--sm" id="so-modal-close">✖ Close</button>
-      </div>
-      <div class="card__body">
-        <form id="so-form" class="form-grid" novalidate>
-          <div class="form-group">
-            <label>Order Date <span class="req">*</span></label>
-            <input type="date" name="order_date" required value="${data?.order_date || todayStr()}">
+  dialog.innerHTML = `
+    <div class="fm-modal__header">
+      <h2 class="fm-modal__title">${isEdit ? '📋 Edit Sales Order' : '📋 New Sales Order'}</h2>
+      <button class="fm-modal__close" id="so-modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="fm-modal__body">
+      <form id="so-form" class="form-grid" novalidate>
+        <div class="form-group">
+          <label>Order Date <span class="req">*</span></label>
+          <input type="date" name="order_date" required value="${data?.order_date || todayStr()}">
+        </div>
+        <div class="form-group">
+          <label>Company <span class="req">*</span></label>
+          <select name="company_id" required>
+            <option value="">-- Select Company --</option>
+            ${compOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Product <span class="req">*</span></label>
+          <select name="product_id" required>
+            <option value="">-- Select Product --</option>
+            ${prodOptions}
+          </select>
+        </div>
+        <div class="form-group form-group--row">
+          <div class="form-group__half">
+            <label>Quantity <span class="req">*</span></label>
+            <input type="number" id="so-qty" name="quantity" min="0.01" step="0.01" required value="${data?.quantity || ''}">
           </div>
-          <div class="form-group">
-            <label>Company <span class="req">*</span></label>
-            <select name="company_id" required>
-              <option value="">-- Select Company --</option>
-              ${compOptions}
+          <div class="form-group__half">
+            <label>Unit <span class="req">*</span></label>
+            <select name="unit_id" required>
+              <option value="">-- Unit --</option>
+              ${unitOptions}
             </select>
           </div>
-          <div class="form-group">
-            <label>Product <span class="req">*</span></label>
-            <select name="product_id" required>
-              <option value="">-- Select Product --</option>
-              ${prodOptions}
-            </select>
+        </div>
+        <div class="form-group form-group--row">
+          <div class="form-group__half">
+            <label>Price / Unit (₹) <span class="req">*</span></label>
+            <input type="number" id="so-price" name="price" min="0" step="0.01" required
+              placeholder="Auto-filled from product"
+              value="${data?.price || ''}">
+            <small style="color:var(--color-text-muted);font-size:0.75rem">Default from product — you can adjust</small>
           </div>
-          <div class="form-group form-group--row">
-            <div class="form-group__half">
-              <label>Quantity <span class="req">*</span></label>
-              <input type="number" id="so-qty" name="quantity" min="0.01" step="0.01" required value="${data?.quantity || ''}">
-            </div>
-            <div class="form-group__half">
-              <label>Unit <span class="req">*</span></label>
-              <select name="unit_id" required>
-                <option value="">-- Unit --</option>
-                ${unitOptions}
-              </select>
-            </div>
+          <div class="form-group__half">
+            <label>Total Amount (₹)</label>
+            <input type="text" id="so-total" readonly class="input--readonly" placeholder="Auto-calculated" value="${data?.total_amount ? '₹' + fmt(data.total_amount) : ''}">
           </div>
-          <div class="form-group form-group--row">
-            <div class="form-group__half">
-              <label>Price / Unit (₹) <span class="req">*</span></label>
-              <input type="number" id="so-price" name="price" min="0" step="0.01" required
-                placeholder="Auto-filled from product"
-                value="${data?.price || ''}">
-              <small style="color:var(--color-text-muted);font-size:0.75rem">Default from product — you can adjust</small>
-            </div>
-            <div class="form-group__half">
-              <label>Total Amount (₹)</label>
-              <input type="text" id="so-total" readonly class="input--readonly" placeholder="Auto-calculated" value="${data?.total_amount ? '₹' + fmt(data.total_amount) : ''}">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Expected Delivery Date</label>
-            <input type="date" name="expected_delivery" value="${data?.expected_delivery || ''}">
-          </div>
-          <div class="form-group form-group--full">
-            <label>Notes</label>
-            <textarea name="notes" rows="2" style="width:100%">${escHtml(data?.notes || '')}</textarea>
-          </div>
-          ${isEdit ? `
-          <div class="form-group">
-            <label>Status</label>
-            <select name="status">
-              <option value="Pending" ${data?.status==='Pending'?'selected':''}>Pending</option>
-              <option value="In Production" ${data?.status==='In Production'?'selected':''}>In Production</option>
-              <option value="Dispatched" ${data?.status==='Dispatched'?'selected':''}>Dispatched</option>
-              <option value="Cancelled" ${data?.status==='Cancelled'?'selected':''}>Cancelled</option>
-            </select>
-          </div>` : ''}
-          <div class="form-actions form-group--full">
-            <button type="submit" class="btn btn--primary">${isEdit ? 'Update Order' : 'Create Sales Order'}</button>
-            <button type="button" class="btn btn--ghost" id="so-modal-cancel">Cancel</button>
-          </div>
-        </form>
-      </div>
+        </div>
+        <div class="form-group">
+          <label>Expected Delivery Date</label>
+          <input type="date" name="expected_delivery" value="${data?.expected_delivery || ''}">
+        </div>
+        <div class="form-group form-group--full">
+          <label>Notes</label>
+          <textarea name="notes" rows="2" style="width:100%">${escHtml(data?.notes || '')}</textarea>
+        </div>
+        ${isEdit ? `
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            <option value="Pending" ${data?.status==='Pending'?'selected':''}>Pending</option>
+            <option value="In Production" ${data?.status==='In Production'?'selected':''}>In Production</option>
+            <option value="Dispatched" ${data?.status==='Dispatched'?'selected':''}>Dispatched</option>
+            <option value="Cancelled" ${data?.status==='Cancelled'?'selected':''}>Cancelled</option>
+          </select>
+        </div>` : ''}
+      </form>
+    </div>
+    <div class="fm-modal__footer">
+      <button type="button" class="btn btn--ghost" id="so-modal-cancel">Cancel</button>
+      <button type="submit" form="so-form" class="btn btn--primary">${isEdit ? 'Update Order' : 'Create Sales Order'}</button>
     </div>
   `;
 
-  document.body.appendChild(overlay);
+  document.body.appendChild(dialog);
+  document.body.classList.add('modal-open');
+  dialog.showModal();
 
-  const close = () => document.body.removeChild(overlay);
-  overlay.querySelector('#so-modal-close')?.addEventListener('click', close);
-  overlay.querySelector('#so-modal-cancel')?.addEventListener('click', close);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  const close = () => {
+    dialog.close();
+    document.body.classList.remove('modal-open');
+  };
+  dialog.querySelector('#so-modal-close')?.addEventListener('click', close);
+  dialog.querySelector('#so-modal-cancel')?.addEventListener('click', close);
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) close(); });
+  dialog.addEventListener('close', () => {
+    document.body.classList.remove('modal-open');
+    setTimeout(() => dialog.remove(), 300);
+  });
 
   // ── Auto-fill price from product default + recalc total ──
-  const prodSel   = overlay.querySelector('[name=product_id]');
-  const qtyInput  = overlay.querySelector('#so-qty');
-  const priceInput = overlay.querySelector('#so-price');
-  const totalInput = overlay.querySelector('#so-total');
+  const prodSel   = dialog.querySelector('[name=product_id]');
+  const qtyInput  = dialog.querySelector('#so-qty');
+  const priceInput = dialog.querySelector('#so-price');
+  const totalInput = dialog.querySelector('#so-total');
 
   function recalcTotal() {
     const qty   = parseFloat(qtyInput?.value || 0);
@@ -283,7 +290,7 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
   // Trigger recalc on load if editing
   if (data?.price) recalcTotal();
 
-  overlay.querySelector('#so-form')?.addEventListener('submit', async (e) => {
+  dialog.querySelector('#so-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const vals = Object.fromEntries(fd.entries());
