@@ -1032,11 +1032,19 @@ dialog::backdrop { background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); ani
   flex-direction: column;
   gap: var(--space-4);
   flex: 1 1 auto !important;
+  /* Explicit max-height so scroll activates regardless of dialog constraints */
+  max-height: calc(min(90vh, 90dvh) - 140px);
   overflow-y: auto !important;
-  /* Needed for iOS Safari overscroll */
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   min-height: 0;
+  /* Custom scrollbar style */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
+.fm-modal__body::-webkit-scrollbar { width: 5px; }
+.fm-modal__body::-webkit-scrollbar-track { background: transparent; }
+.fm-modal__body::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 99px; }
 /* Form inside the body should stretch */
 .fm-modal__body form,
 #fm-modal-form {
@@ -1393,15 +1401,20 @@ body.sidebar--open #fm-overlay { display: block; }
   /* Remove the drag handle — no longer a bottom sheet */
   .fm-modal__header::before { display: none !important; }
 
-  /* ── Body — scrolls ── */
+  /* ── Body — scrolls (explicit max-height is the key on mobile) ── */
   .fm-modal__body {
     flex: 1 1 auto !important;
     min-height: 0 !important;
+    /* calc: full screen minus header (~60px) minus footer (~90px) minus safe areas */
+    max-height: calc(100dvh - 160px) !important;
+    max-height: calc(100vh - 160px) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     padding: var(--space-4) !important;
     gap: var(--space-3) !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--color-border) transparent !important;
   }
 
   /* ── Footer — always locked at bottom ── */
