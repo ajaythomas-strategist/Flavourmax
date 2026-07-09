@@ -980,7 +980,7 @@ input[readonly], .input--readonly {
 .filter-bar.card { margin-bottom: var(--space-4); }
 
 /* ─── Modals ───────────────────────────────────────────────── */
-dialog { border: none; border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); padding: 0; max-height: 90vh; overflow-y: auto; width: 90vw; background: var(--color-bg-card); }
+dialog { border: none; border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); padding: 0; max-height: 90vh; width: 90vw; background: var(--color-bg-card); display: flex; flex-direction: column; overflow: hidden; }
 dialog::backdrop { background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); animation: backdropIn var(--transition-slow) ease; }
 
 @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1008,7 +1008,7 @@ dialog::backdrop { background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); ani
 }
 .fm-modal__close:hover { color: var(--color-danger); background: var(--color-danger-soft); }
 
-.fm-modal__body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.fm-modal__body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); flex: 1 1 auto; overflow-y: auto; }
 .fm-modal__footer {
   display: flex; justify-content: flex-end; gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
@@ -1323,10 +1323,13 @@ body.sidebar--open #fm-overlay { display: block; }
   dialog {
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 92dvh;
+    max-height: 85vh !important;
     margin: auto auto 0 auto;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     animation: sheetUp var(--transition-slow) ease;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden !important;
   }
 
   @keyframes sheetUp {
@@ -1336,8 +1339,6 @@ body.sidebar--open #fm-overlay { display: block; }
 
   .fm-modal__header {
     padding: var(--space-4) var(--space-4);
-    position: sticky;
-    top: 0;
     background: var(--color-bg-card);
     z-index: 2;
   }
@@ -1352,13 +1353,16 @@ body.sidebar--open #fm-overlay { display: block; }
     margin: 0 auto var(--space-3);
   }
 
-  .fm-modal__body { padding: var(--space-4); gap: var(--space-3); }
+  .fm-modal__body {
+    padding: var(--space-4);
+    gap: var(--space-3);
+    flex: 1 1 auto;
+    overflow-y: auto !important;
+  }
   .fm-modal__footer {
     flex-direction: column-reverse;
     gap: var(--space-2);
     padding: var(--space-4);
-    position: sticky;
-    bottom: 0;
     background: var(--color-surface);
   }
   .fm-modal__footer .btn { width: 100%; justify-content: center; }
