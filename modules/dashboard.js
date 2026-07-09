@@ -12,52 +12,52 @@ export async function renderDashboard(container) {
   }
 
   container.innerHTML = `
-    <div class="page-header">
+    <div class="page-header stagger-1">
       <h1 class="page-title">Dashboard</h1>
       <span class="page-subtitle">Overview — ${new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</span>
     </div>
 
     <!-- Group 1: Today's Status -->
-    <div class="dashboard-section-title" style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.5rem">
+    <div class="dashboard-section-title stagger-2" style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.5rem">
       <span style="display:inline-block;width:6px;height:6px;background:var(--color-success);border-radius:50%;animation:pulse 1.5s infinite"></span>
       Today's Activity (Live)
     </div>
     <div class="kpi-grid" id="today-kpi-grid" style="margin-bottom:1.75rem">
-      ${[1,2,3,4].map(() => `<div class="kpi-card kpi-card--loading"><div class="skeleton skeleton--kpi"></div></div>`).join('')}
+      ${[1,2,3,4].map((i) => `<div class="kpi-card kpi-card--loading stagger-${i}"><div class="skeleton skeleton--kpi"></div></div>`).join('')}
     </div>
 
     <!-- Group 2: System Overview -->
-    <div class="dashboard-section-title" style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin:0 0 0.75rem 0">
+    <div class="dashboard-section-title stagger-3" style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin:0 0 0.75rem 0">
       System Overview
     </div>
     <div class="kpi-grid" id="system-kpi-grid" style="margin-bottom:1.75rem">
-      ${[1,2,3,4].map(() => `<div class="kpi-card kpi-card--loading"><div class="skeleton skeleton--kpi"></div></div>`).join('')}
+      ${[1,2,3,4].map((i) => `<div class="kpi-card kpi-card--loading stagger-${i+1}"><div class="skeleton skeleton--kpi"></div></div>`).join('')}
     </div>
     
     <div class="dashboard-charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:1.5rem;margin-bottom:1.5rem">
-      <div class="card">
+      <div class="card stagger-4">
         <div class="card__header"><h3 class="card__title">📈 Quantities Timeline (Last 30 Days)</h3></div>
         <div class="card__body" style="position:relative;height:260px"><canvas id="qtyTimelineChart"></canvas></div>
       </div>
-      <div class="card">
+      <div class="card stagger-5">
         <div class="card__header"><h3 class="card__title">⭐ Product Sales Performance</h3></div>
         <div class="card__body" style="position:relative;height:260px"><canvas id="productPerfChart"></canvas></div>
       </div>
     </div>
 
     <div class="dashboard-grid">
-      <div class="card" id="dash-recent-batches">
+      <div class="card stagger-5" id="dash-recent-batches">
         <div class="card__header">
           <h3 class="card__title">⚗ Recent Batches</h3>
           <a href="#production/batch-list" class="btn btn--ghost btn--sm">View All</a>
         </div>
         <div class="card__body"><div class="skeleton skeleton--list"></div></div>
       </div>
-      <div class="card" id="dash-low-stock">
+      <div class="card stagger-6" id="dash-low-stock">
         <div class="card__header"><h3 class="card__title">⚠ Low Stock Alerts</h3></div>
         <div class="card__body"><div class="skeleton skeleton--list"></div></div>
       </div>
-      <div class="card" id="dash-pending-corrections">
+      <div class="card stagger-6" id="dash-pending-corrections">
         <div class="card__header">
           <h3 class="card__title">✏ Pending Corrections</h3>
           <a href="#corrections/inbox" class="btn btn--ghost btn--sm">Review</a>
@@ -73,7 +73,7 @@ export async function renderDashboard(container) {
 
   let chartsInitialized = false;
 
-  async function updateDashboardData() {
+  async function updateDashboardData(isInitial = false) {
     try {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -133,19 +133,24 @@ export async function renderDashboard(container) {
 
       // ── Render Today's Live KPI cards ──────────────────────────
       setHtml('#today-kpi-grid', `
-        ${kpiCard('⚡', 'Active Batches Today', activeTodayStr,   'batches in progress today', 'kpi--blue', '#production/batch-list')}
-        ${kpiCard('✅', 'Completed Today',     completedToday,   'batches completed today',   'kpi--green')}
-        ${kpiCard('📦', 'Dispatches Today',    dispatchedToday,  'consignments sent today',   'kpi--blue')}
-        ${kpiCard('💰', 'Sales Booked Today',  salesToday,       'customer orders today',     'kpi--amber', '#sales/order-list')}
+        ${kpiCard('⚡', 'Active Batches Today', activeTodayStr,   'batches in progress today', 'kpi--blue stagger-1', '#production/batch-list')}
+        ${kpiCard('✅', 'Completed Today',     completedToday,   'batches completed today',   'kpi--green stagger-2')}
+        ${kpiCard('📦', 'Dispatches Today',    dispatchedToday,  'consignments sent today',   'kpi--blue stagger-3')}
+        ${kpiCard('💰', 'Sales Booked Today',  salesToday,       'customer orders today',     'kpi--amber stagger-4', '#sales/order-list')}
       `);
 
       // ── Render System Overview KPI cards ────────────────────────
       setHtml('#system-kpi-grid', `
-        ${kpiCard('⚗', 'Total Active Batches',  activeBatches.length,    'overall in progress',      'kpi--blue',  '#production/batch-list')}
-        ${kpiCard('⚠', 'Low Stock Alerts',      lowStockItems.length,    'items below threshold',     lowStockItems.length > 0 ? 'kpi--red' : 'kpi--green', '#inventory/current-stock')}
-        ${kpiCard('🚚', 'Pending Dispatches',    pendingDispatches,       'awaiting delivery',        pendingDispatches > 0 ? 'kpi--amber' : 'kpi--green', '#dispatch/dispatch-list')}
-        ${kpiCard('✏', 'Pending Corrections',   pendingCorrections,      'awaiting approval',        pendingCorrections > 0 ? 'kpi--red' : 'kpi--green', '#corrections/inbox')}
+        ${kpiCard('⚗', 'Total Active Batches',  activeBatches.length,    'overall in progress',      'kpi--blue stagger-2',  '#production/batch-list')}
+        ${kpiCard('⚠', 'Low Stock Alerts',      lowStockItems.length,    'items below threshold',     lowStockItems.length > 0 ? 'kpi--red stagger-3' : 'kpi--green stagger-3', '#inventory/current-stock')}
+        ${kpiCard('🚚', 'Pending Dispatches',    pendingDispatches,       'awaiting delivery',        pendingDispatches > 0 ? 'kpi--amber stagger-4' : 'kpi--green stagger-4', '#dispatch/dispatch-list')}
+        ${kpiCard('✏', 'Pending Corrections',   pendingCorrections,      'awaiting approval',        pendingCorrections > 0 ? 'kpi--red stagger-5' : 'kpi--green stagger-5', '#corrections/inbox')}
       `);
+
+      // Animate numbers counting up on initial load
+      if (isInitial) {
+        animateCountUp(container);
+      }
 
       // ── Recent Batches ────────────────────────────────────────
       const recentBatches = [...batches]
@@ -362,8 +367,8 @@ export async function renderDashboard(container) {
     }
   }
 
-  // Trigger the first dashboard data load
-  await updateDashboardData();
+  // Trigger the first dashboard data load with isInitial=true for counters
+  await updateDashboardData(true);
 
   // Start the live polling loop: refreshes data every 10 seconds silently
   window.dashboardInterval = setInterval(async () => {
@@ -371,11 +376,48 @@ export async function renderDashboard(container) {
       clearInterval(window.dashboardInterval);
       return;
     }
-    await updateDashboardData();
+    await updateDashboardData(false);
   }, 10000);
 }
 
 // ── Helpers ───────────────────────────────────────────────────
+
+function animateCountUp(container) {
+  container.querySelectorAll('.kpi-card__value').forEach(el => {
+    if (el.dataset.animated) return;
+    el.dataset.animated = 'true';
+    
+    const text = el.textContent.trim();
+    const isCurrency = text.startsWith('₹');
+    const cleanText = text.replace(/[₹,\s]/g, '');
+    const target = parseFloat(cleanText);
+    if (isNaN(target) || target === 0) return;
+    
+    let start = 0;
+    const duration = 750; // ms
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = progress * (2 - progress); // easeOutQuad
+      const current = start + (target - start) * ease;
+      
+      const formatted = Number.isInteger(target) 
+        ? Math.round(current).toLocaleString('en-IN')
+        : current.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      el.textContent = isCurrency ? '₹' + formatted : formatted;
+      
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        el.textContent = text; // Restore original formatted string
+      }
+    }
+    requestAnimationFrame(update);
+  });
+}
 
 async function loadChartJS() {
   if (window.Chart) return window.Chart;

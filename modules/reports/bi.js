@@ -217,18 +217,29 @@ function calculateVariance(current, prior) {
 }
 
 // Helper to render KPI Card
-function renderKPICard(title, varianceObj, formatFn = fmt) {
+function renderKPICard(title, varianceObj, formatFn = fmt, index = 1) {
   const formattedVal = formatFn(varianceObj.value);
   const formattedDiff = formatFn(Math.abs(varianceObj.diff));
   const trendClass = `bi-kpi-card__compare--${varianceObj.class}`;
   
+  // Custom trend arrow and badge style
+  const trendIcon = varianceObj.class === 'up' ? '↗' : varianceObj.class === 'down' ? '↘' : '→';
+  const badgeStyle = varianceObj.class === 'up' 
+    ? 'background:rgba(22, 163, 74, 0.1);color:#16a34a' 
+    : varianceObj.class === 'down' 
+      ? 'background:rgba(220, 38, 38, 0.1);color:#dc2626' 
+      : 'background:var(--color-surface);color:var(--color-text-muted)';
+
   return `
-    <div class="bi-kpi-card">
-      <span class="bi-kpi-card__title">${escHtml(title)}</span>
-      <span class="bi-kpi-card__value">${formattedVal}</span>
-      <div class="bi-kpi-card__compare ${trendClass}">
+    <div class="bi-kpi-card stagger-${index}">
+      <div class="kpi-card__header-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:var(--space-2)">
+        <span class="bi-kpi-card__title" style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);font-weight:600">${escHtml(title)}</span>
+        <div class="kpi-card__icon-badge" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.95rem;font-weight:700;${badgeStyle}">${trendIcon}</div>
+      </div>
+      <span class="bi-kpi-card__value" style="font-size:2rem;font-weight:700;color:var(--color-text);margin:0.25rem 0">${formattedVal}</span>
+      <div class="bi-kpi-card__compare ${trendClass}" style="display:flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-xs);font-weight:500">
         <span>${varianceObj.icon} ${fmt(Math.abs(varianceObj.pct))}%</span>
-        <span style="color:var(--color-text-muted);margin-left:4px">
+        <span style="color:var(--color-text-light);margin-left:4px">
           (${varianceObj.diff >= 0 ? '+' : '-'}${formattedDiff} vs prior)
         </span>
       </div>
@@ -574,6 +585,9 @@ async function renderActiveTab(viewport, companies, products) {
         await renderExceptionsTab(viewport, allSalesOrders, allBatches, allBalances, allProcessLogs, compMap, prodMap);
         break;
     }
+    
+    // Animate numbers counting up
+    animateBICountUp(viewport);
   } catch (err) {
     console.error('[bi_tab]', err);
     viewport.innerHTML = `<div class="bi-unavailable-alert card"><div class="bi-unavailable-alert__icon">⚠️</div><p>${escHtml(err.message)}</p></div>`;
@@ -598,10 +612,10 @@ async function renderExecutiveTab(viewport, orders, batches, dispatches, priorOr
   viewport.innerHTML = `
     <!-- Executive KPIs -->
     <div class="bi-kpi-grid">
-      ${renderKPICard('Revenue / Order Value', orderValueVar, fmtVal)}
-      ${renderKPICard('Active Orders Received', calculateVariance(orders.length, priorOrders.length))}
-      ${renderKPICard('Production Volume', prodQtyVar)}
-      ${renderKPICard('Dispatched Volume', dispQtyVar)}
+      ${renderKPICard('Revenue / Order Value', orderValueVar, fmtVal, 1)}
+      ${renderKPICard('Active Orders Received', calculateVariance(orders.length, priorOrders.length), fmt, 2)}
+      ${renderKPICard('Production Volume', prodQtyVar, fmt, 3)}
+      ${renderKPICard('Dispatched Volume', dispQtyVar, fmt, 4)}
     </div>
 
     <!-- Executive Charts -->
@@ -709,21 +723,36 @@ async function renderOrdersTab(viewport, orders, priorOrders, compMap, prodMap, 
 
   viewport.innerHTML = `
     <div class="bi-kpi-grid">
-      ${renderKPICard('Total Orders', calculateVariance(orders.length, priorOrders.length))}
-      <div class="bi-kpi-card">
-        <span class="bi-kpi-card__title">Pending Orders</span>
-        <span class="bi-kpi-card__value">${pendingOrders}</span>
-        <small style="color:var(--color-text-muted)">Awaiting production</small>
+      ${renderKPICard('Total Orders', calculateVariance(orders.length, priorOrders.length), fmt, 1)}
+      <div class="bi-kpi-card stagger-2">
+        <div class="kpi-card__header-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:var(--space-2)">
+          <span class="bi-kpi-card__title" style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);font-weight:600">Pending Orders</span>
+          <div class="kpi-card__icon-badge" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.95rem;font-weight:700;background:var(--color-surface);color:var(--color-text-muted)">⏳</div>
+        </div>
+        <span class="bi-kpi-card__value" style="font-size:2rem;font-weight:700;color:var(--color-text);margin:0.25rem 0">${pendingOrders}</span>
+        <div class="bi-kpi-card__compare" style="display:flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-xs);font-weight:500">
+          <span style="color:var(--color-text-light)">Awaiting production</span>
+        </div>
       </div>
-      <div class="bi-kpi-card">
-        <span class="bi-kpi-card__title">In Production</span>
-        <span class="bi-kpi-card__value">${inProdOrders}</span>
-        <small style="color:var(--color-text-muted)">Currently in process</small>
+      <div class="bi-kpi-card stagger-3">
+        <div class="kpi-card__header-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:var(--space-2)">
+          <span class="bi-kpi-card__title" style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);font-weight:600">In Production</span>
+          <div class="kpi-card__icon-badge" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.95rem;font-weight:700;background:var(--color-surface);color:var(--color-text-muted)">⚗️</div>
+        </div>
+        <span class="bi-kpi-card__value" style="font-size:2rem;font-weight:700;color:var(--color-text);margin:0.25rem 0">${inProdOrders}</span>
+        <div class="bi-kpi-card__compare" style="display:flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-xs);font-weight:500">
+          <span style="color:var(--color-text-light)">Currently in process</span>
+        </div>
       </div>
-      <div class="bi-kpi-card">
-        <span class="bi-kpi-card__title">Completed &amp; Dispatched</span>
-        <span class="bi-kpi-card__value">${dispOrders}</span>
-        <small style="color:var(--color-text-muted)">Shipped to customers</small>
+      <div class="bi-kpi-card stagger-4">
+        <div class="kpi-card__header-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:var(--space-2)">
+          <span class="bi-kpi-card__title" style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);font-weight:600">Completed &amp; Dispatched</span>
+          <div class="kpi-card__icon-badge" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.95rem;font-weight:700;background:rgba(22, 163, 74, 0.1);color:#16a34a">✓</div>
+        </div>
+        <span class="bi-kpi-card__value" style="font-size:2rem;font-weight:700;color:var(--color-text);margin:0.25rem 0">${dispOrders}</span>
+        <div class="bi-kpi-card__compare" style="display:flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-xs);font-weight:500">
+          <span style="color:var(--color-text-light)">Shipped to customers</span>
+        </div>
       </div>
     </div>
 
@@ -1508,4 +1537,41 @@ function exportViewCSV(view, orders, batches, dispatches, allBalances, allProces
   } catch (err) {
     toast.error('CSV Export failed: ' + err.message);
   }
+}
+
+function animateBICountUp(container) {
+  container.querySelectorAll('.bi-kpi-card__value').forEach(el => {
+    if (el.dataset.animated) return;
+    el.dataset.animated = 'true';
+    
+    const text = el.textContent.trim();
+    const isCurrency = text.startsWith('₹');
+    const cleanText = text.replace(/[₹,\s]/g, '');
+    const target = parseFloat(cleanText);
+    if (isNaN(target) || target === 0) return;
+    
+    let start = 0;
+    const duration = 800; // ms
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = progress * (2 - progress); // easeOutQuad
+      const current = start + (target - start) * ease;
+      
+      const formatted = Number.isInteger(target) 
+        ? Math.round(current).toLocaleString('en-IN')
+        : current.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      el.textContent = isCurrency ? '₹' + formatted : formatted;
+      
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        el.textContent = text;
+      }
+    }
+    requestAnimationFrame(update);
+  });
 }
