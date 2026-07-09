@@ -45,15 +45,15 @@
   --color-text-light: hsl(215, 10%, 72%);
   --color-text-on-primary: #ffffff;
 
-  /* Sidebar - Modern Slate/Navy Theme */
-  --sidebar-bg:       hsl(218, 22%, 12%);
+  /* Sidebar - Original Teal Theme */
+  --sidebar-bg:       hsl(175, 55%, 22%);
   --sidebar-width:    260px;
   --sidebar-collapsed: 68px;
-  --sidebar-text:     hsl(218, 12%, 70%);
+  --sidebar-text:     hsl(175, 30%, 85%);
   --sidebar-text-active: #ffffff;
-  --sidebar-hover:    hsl(218, 20%, 18%);
-  --sidebar-active:   hsl(175, 55%, 26%);
-  --sidebar-border:   hsl(218, 20%, 8%);
+  --sidebar-hover:    hsl(175, 45%, 30%);
+  --sidebar-active:   hsl(175, 50%, 34%);
+  --sidebar-border:   hsl(175, 45%, 18%);
 
   /* Spacing */
   --space-1: 0.25rem;
@@ -1996,9 +1996,9 @@ body.sidebar--open #fm-overlay { display: block; }
   --color-text-muted:  #94a3b8;
   --color-text-light:  #64748b;
   
-  --sidebar-bg:        #0f172a;
-  --sidebar-hover:     #1e293b;
-  --sidebar-active:    #334155;
+  --sidebar-bg:        hsl(175, 60%, 14%);
+  --sidebar-hover:     hsl(175, 50%, 20%);
+  --sidebar-active:    hsl(175, 50%, 26%);
 }
 
 .dark-mode body {
