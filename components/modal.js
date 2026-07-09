@@ -119,6 +119,19 @@ export function contentModal({ title = '', content = '', size = 'lg' } = {}) {
 function createDialog(size = 'md') {
   const d = document.createElement('dialog');
   d.className = `fm-modal fm-modal--${size}`;
+  
+  // Override showModal to automatically lock body scroll
+  const originalShowModal = d.showModal;
+  d.showModal = function() {
+    document.body.classList.add('modal-open');
+    originalShowModal.call(d);
+  };
+  
+  // Clean up class when dialog is closed
+  d.addEventListener('close', () => {
+    document.body.classList.remove('modal-open');
+  });
+  
   return d;
 }
 

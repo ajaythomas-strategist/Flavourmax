@@ -980,6 +980,19 @@ input[readonly], .input--readonly {
 .filter-bar.card { margin-bottom: var(--space-4); }
 
 /* ─── Modals ───────────────────────────────────────────────── */
+/* Prevent background page scroll when modal is open */
+body:has(dialog[open]),
+body.modal-open {
+  overflow: hidden !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+}
+
+body:has(dialog[open]) #fm-main,
+body.modal-open #fm-main {
+  overflow: hidden !important;
+}
+
 dialog {
   border: none;
   border-radius: var(--radius-xl);
@@ -1037,6 +1050,7 @@ dialog::backdrop { background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); ani
   overflow-y: auto !important;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain !important;
   min-height: 0;
   /* Custom scrollbar style */
   scrollbar-width: thin;
@@ -1401,7 +1415,6 @@ body.sidebar--open #fm-overlay { display: block; }
   /* Remove the drag handle — no longer a bottom sheet */
   .fm-modal__header::before { display: none !important; }
 
-  /* ── Body — scrolls (explicit max-height is the key on mobile) ── */
   .fm-modal__body {
     flex: 1 1 auto !important;
     min-height: 0 !important;
@@ -1411,6 +1424,7 @@ body.sidebar--open #fm-overlay { display: block; }
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
     padding: var(--space-4) !important;
     gap: var(--space-3) !important;
     scrollbar-width: thin !important;
