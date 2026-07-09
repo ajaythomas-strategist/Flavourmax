@@ -6,7 +6,7 @@
 import { getCurrentUser, hasPermission, logout, changePassword } from '../auth.js';
 import { toast } from './toast.js';
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   {
     label: 'Dashboard', icon: '▦', route: 'dashboard', perm: 'dashboard',
   },
@@ -98,6 +98,67 @@ const BOTTOM_NAV = [
   { icon: '☰',  label: 'More',       route: null,                     perm: 'dashboard' },
 ];
 
+// Manage Favorites & Recents in LocalStorage
+function getFavorites() { return JSON.parse(localStorage.getItem('fm_favs') || '[]'); }
+function toggleFavorite(route, label, icon) {
+  let favs = getFavorites();
+  const index = favs.findIndex(f => f.route === route);
+  if (index > -1) favs.splice(index, 1);
+  else favs.push({ route, label, icon });
+  localStorage.setItem('fm_favs', JSON.stringify(favs));
+  renderFavoritesList();
+}
+function addRecentPage(route, label, icon) {
+  if (!route) return;
+  let recs = JSON.parse(localStorage.getItem('fm_recs') || '[]');
+  // Filter out duplicate
+  recs = recs.filter(r => r.route !== route);
+  recs.unshift({ route, label, icon });
+  recs = recs.slice(0, 5); // keep last 5
+  localStorage.setItem('fm_recs', JSON.stringify(recs));
+  renderRecentsList();
+}
+
+function renderFavoritesList() {
+  const el = document.getElementById('sidebar-favorites-list');
+  const sect = document.getElementById('sidebar-favorites-section');
+  if (!el || !sect) return;
+  const favs = getFavorites();
+  if (favs.length === 0) {
+    sect.style.display = 'none';
+    return;
+  }
+  sect.style.display = 'block';
+  el.innerHTML = favs.map(f => `
+    <li>
+      <a class="sidebar__link sidebar__link--child" href="#${f.route}" data-route="${f.route}">
+        <span class="sidebar__icon">${f.icon}</span>
+        <span class="sidebar__label">${escHtml(f.label)}</span>
+      </a>
+    </li>
+  `).join('');
+}
+
+function renderRecentsList() {
+  const el = document.getElementById('sidebar-recents-list');
+  const sect = document.getElementById('sidebar-recents-section');
+  if (!el || !sect) return;
+  const recs = JSON.parse(localStorage.getItem('fm_recs') || '[]');
+  if (recs.length === 0) {
+    sect.style.display = 'none';
+    return;
+  }
+  sect.style.display = 'block';
+  el.innerHTML = recs.map(r => `
+    <li>
+      <a class="sidebar__link sidebar__link--child" href="#${r.route}" data-route="${r.route}">
+        <span class="sidebar__icon">${r.icon}</span>
+        <span class="sidebar__label">${escHtml(r.label)}</span>
+      </a>
+    </li>
+  `).join('');
+}
+
 export function initSidebar(onNavigate) {
   const sidebar = document.getElementById('fm-sidebar');
   if (!sidebar) return;
@@ -110,9 +171,35 @@ export function initSidebar(onNavigate) {
       </div>
       <button class="sidebar__toggle" id="sidebar-toggle" aria-label="Toggle sidebar">◀</button>
     </div>
+
+    <!-- Sidebar Search -->
+    <div class="sidebar__search-wrap">
+      <div class="sidebar__search-inner">
+        <span class="sidebar__search-icon">🔍</span>
+        <input type="text" id="fm-sidebar-search" class="sidebar__search-input" placeholder="Quick find page..." autocomplete="off">
+      </div>
+    </div>
+
     <nav class="sidebar__nav" aria-label="Main navigation">
-      ${buildNavItems(onNavigate)}
+      <!-- Favorites Section -->
+      <div class="sidebar__section" id="sidebar-favorites-section" style="display:none">
+        <div class="sidebar__section-title">⭐ Pinned Favorites</div>
+        <ul class="sidebar__sub-list" id="sidebar-favorites-list"></ul>
+      </div>
+
+      <!-- Recents Section -->
+      <div class="sidebar__section" id="sidebar-recents-section" style="display:none">
+        <div class="sidebar__section-title">⏱ Recents</div>
+        <ul class="sidebar__sub-list" id="sidebar-recents-list"></ul>
+      </div>
+
+      <!-- Main Navigation Section -->
+      <div class="sidebar__section-title">📦 Application Modules</div>
+      <div id="sidebar-main-nav">
+        ${buildNavItems(onNavigate)}
+      </div>
     </nav>
+
     <div class="sidebar__footer">
       <div class="sidebar__user">
         <div class="sidebar__avatar">${getUserInitials()}</div>
@@ -127,6 +214,10 @@ export function initSidebar(onNavigate) {
       </div>
     </div>
   `;
+
+  // Render sub lists
+  renderFavoritesList();
+  renderRecentsList();
 
   // Toggle collapse (desktop only)
   const toggleBtn = document.getElementById('sidebar-toggle');
@@ -175,6 +266,67 @@ export function initSidebar(onNavigate) {
   document.getElementById('sidebar-logout')?.addEventListener('click', () => {
     logout();
     window.location.reload();
+  });
+
+  // Pinned/Favorites star action triggers
+  sidebar.addEventListener('click', e => {
+    const starBtn = e.target.closest('.sidebar__star-btn');
+    if (!starBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const route = starBtn.dataset.starRoute;
+    const label = starBtn.dataset.starLabel;
+    const icon = starBtn.dataset.starIcon;
+    toggleFavorite(route, label, icon);
+    // update stars visually
+    const isFavNow = getFavorites().some(f => f.route === route);
+    starBtn.classList.toggle('sidebar__star-btn--active', isFavNow);
+    starBtn.innerHTML = isFavNow ? '★' : '☆';
+  });
+
+  // Sidebar link filtering (Live Search)
+  const searchInput = document.getElementById('fm-sidebar-search');
+  searchInput?.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    const links = sidebar.querySelectorAll('#sidebar-main-nav .sidebar__link');
+    const details = sidebar.querySelectorAll('#sidebar-main-nav details');
+
+    if (!query) {
+      // restore all
+      links.forEach(l => {
+        l.style.display = 'flex';
+        const li = l.closest('li');
+        if (li) li.style.display = 'block';
+      });
+      details.forEach(d => {
+        d.style.display = 'block';
+        d.open = false;
+      });
+      return;
+    }
+
+    details.forEach(d => {
+      let groupHasMatch = false;
+      const subLinks = d.querySelectorAll('.sidebar__link');
+      subLinks.forEach(l => {
+        const text = l.querySelector('.sidebar__label')?.textContent.toLowerCase() || '';
+        const match = text.includes(query);
+        l.style.display = match ? 'flex' : 'none';
+        const li = l.closest('li');
+        if (li) li.style.display = match ? 'block' : 'none';
+        if (match) groupHasMatch = true;
+      });
+      d.style.display = groupHasMatch ? 'block' : 'none';
+      if (groupHasMatch) d.open = true;
+    });
+
+    // Handle root links that do not have submenus
+    const rootLinks = sidebar.querySelectorAll('#sidebar-main-nav > .sidebar__link');
+    rootLinks.forEach(l => {
+      const text = l.querySelector('.sidebar__label')?.textContent.toLowerCase() || '';
+      const match = text.includes(query);
+      l.style.display = match ? 'flex' : 'none';
+    });
   });
 
   // Inject bottom nav bar (mobile only)
@@ -244,16 +396,25 @@ function _initBottomNav() {
 }
 
 function buildNavItems(onNavigate) {
+  const favs = getFavorites();
   return NAV_ITEMS.filter(item => hasPermission(item.perm)).map(item => {
     if (item.children) {
       const visibleChildren = item.children.filter(c => hasPermission(c.perm));
       if (visibleChildren.length === 0) return '';
-      const childItems = visibleChildren.map(c => `
-        <li><a class="sidebar__link sidebar__link--child" href="#${c.route}" data-route="${c.route}">
-          <span class="sidebar__icon">${c.icon}</span>
-          <span class="sidebar__label">${escHtml(c.label)}</span>
-        </a></li>
-      `).join('');
+      const childItems = visibleChildren.map(c => {
+        const isFav = favs.some(f => f.route === c.route);
+        return `
+          <li style="position:relative">
+            <a class="sidebar__link sidebar__link--child" href="#${c.route}" data-route="${c.route}">
+              <span class="sidebar__icon">${c.icon}</span>
+              <span class="sidebar__label">${escHtml(c.label)}</span>
+            </a>
+            <button class="sidebar__star-btn ${isFav ? 'sidebar__star-btn--active' : ''}" 
+                    data-star-route="${c.route}" data-star-label="${escHtml(c.label)}" data-star-icon="${c.icon}" 
+                    title="Pin to Favorites" aria-label="Favorite">${isFav ? '★' : '☆'}</button>
+          </li>
+        `;
+      }).join('');
 
       return `
         <details class="sidebar__group" name="nav-group">
@@ -265,16 +426,35 @@ function buildNavItems(onNavigate) {
           <ul class="sidebar__sub-list">${childItems}</ul>
         </details>`;
     } else {
+      const isFav = favs.some(f => f.route === item.route);
       return `
-        <a class="sidebar__link" href="#${item.route}" data-route="${item.route}">
-          <span class="sidebar__icon">${item.icon}</span>
-          <span class="sidebar__label">${escHtml(item.label)}</span>
-        </a>`;
+        <div style="position:relative">
+          <a class="sidebar__link" href="#${item.route}" data-route="${item.route}">
+            <span class="sidebar__icon">${item.icon}</span>
+            <span class="sidebar__label">${escHtml(item.label)}</span>
+          </a>
+          <button class="sidebar__star-btn ${isFav ? 'sidebar__star-btn--active' : ''}" 
+                  data-star-route="${item.route}" data-star-label="${escHtml(item.label)}" data-star-icon="${item.icon}" 
+                  title="Pin to Favorites" aria-label="Favorite">${isFav ? '★' : '☆'}</button>
+        </div>`;
     }
   }).join('');
 }
 
 export function setActiveRoute(route) {
+  // Find item details from route
+  let matchedItem = null;
+  for (const item of NAV_ITEMS) {
+    if (item.route === route) { matchedItem = item; break; }
+    if (item.children) {
+      const found = item.children.find(c => c.route === route);
+      if (found) { matchedItem = found; break; }
+    }
+  }
+  if (matchedItem) {
+    addRecentPage(route, matchedItem.label, matchedItem.icon);
+  }
+
   // Sidebar links
   document.querySelectorAll('.sidebar__link').forEach(link => {
     const isActive = link.dataset.route === route;
