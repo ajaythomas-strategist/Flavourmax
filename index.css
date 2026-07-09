@@ -980,7 +980,25 @@ input[readonly], .input--readonly {
 .filter-bar.card { margin-bottom: var(--space-4); }
 
 /* ─── Modals ───────────────────────────────────────────────── */
-dialog { border: none; border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); padding: 0; max-height: 90vh; width: 90vw; background: var(--color-bg-card); display: flex; flex-direction: column; overflow: hidden; }
+dialog {
+  border: none;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: 0;
+  width: min(90vw, 600px);
+  background: var(--color-bg-card);
+  /* Force flex containment so header/footer always stay visible */
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: min(90vh, 90dvh) !important;
+  overflow: hidden !important;
+  /* Center in viewport */
+  margin: auto !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
 dialog::backdrop { background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); animation: backdropIn var(--transition-slow) ease; }
 
 @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1008,7 +1026,25 @@ dialog::backdrop { background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); ani
 }
 .fm-modal__close:hover { color: var(--color-danger); background: var(--color-danger-soft); }
 
-.fm-modal__body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); flex: 1 1 auto; overflow-y: auto; }
+.fm-modal__body {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  /* Needed for iOS Safari overscroll */
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+/* Form inside the body should stretch */
+.fm-modal__body form,
+#fm-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
 .fm-modal__footer {
   display: flex; justify-content: flex-end; gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
@@ -1321,19 +1357,28 @@ body.sidebar--open #fm-overlay { display: block; }
 
   /* ── Modals: bottom-sheet on mobile ─────────────────────── */
   dialog {
+    /* Override desktop centering — anchor to bottom of screen */
+    position: fixed !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    transform: none !important;
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 85vh !important;
-    margin: auto auto 0 auto;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    /* Leave room for top safe area */
+    max-height: 88dvh !important;
+    max-height: 88vh !important;
+    margin: 0 !important;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
     animation: sheetUp var(--transition-slow) ease;
     display: flex !important;
-    flex-direction: column;
+    flex-direction: column !important;
     overflow: hidden !important;
   }
 
   @keyframes sheetUp {
-    from { opacity: 0; transform: translateY(40px); }
+    from { opacity: 0; transform: translateY(60px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
@@ -1341,6 +1386,7 @@ body.sidebar--open #fm-overlay { display: block; }
     padding: var(--space-4) var(--space-4);
     background: var(--color-bg-card);
     z-index: 2;
+    flex-shrink: 0;
   }
 
   /* Sheet handle */
@@ -1356,14 +1402,18 @@ body.sidebar--open #fm-overlay { display: block; }
   .fm-modal__body {
     padding: var(--space-4);
     gap: var(--space-3);
-    flex: 1 1 auto;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
   .fm-modal__footer {
     flex-direction: column-reverse;
     gap: var(--space-2);
     padding: var(--space-4);
     background: var(--color-surface);
+    flex-shrink: 0 !important;
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
   }
   .fm-modal__footer .btn { width: 100%; justify-content: center; }
 
