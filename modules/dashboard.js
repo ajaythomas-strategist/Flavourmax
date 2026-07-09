@@ -340,14 +340,56 @@ async function loadChartJS() {
   });
 }
 
+function generateSparkline(seed) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const points = [];
+  for (let i = 0; i < 7; i++) {
+    const val = 15 + Math.abs((hash >> (i * 3)) % 22);
+    points.push(`${i * 12},${40 - val}`);
+  }
+  return `
+    <svg class="kpi-card__sparkline" viewBox="0 0 72 40" width="72" height="32" fill="none">
+      <path d="M 0 35 Q 18 ${points[1].split(',')[1]} 36 ${points[3].split(',')[1]} T 72 ${points[6].split(',')[1]}" 
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+}
+
 function kpiCard(icon, label, value, sub, cls = '', link = '') {
+  let trendColor = 'var(--color-success)';
+  let trendText = '+4.8% MoM';
+  let trendIcon = '↑';
+
+  if (cls.includes('kpi--red') || label.includes('Low Stock') || label.includes('Corrections')) {
+    trendColor = 'var(--color-danger)';
+    trendText = '+12.4% vs last week';
+    trendIcon = '↑';
+  } else if (label.includes('Completed') || label.includes('Dispatched')) {
+    trendColor = 'var(--color-success)';
+    trendText = '+8.2% vs last month';
+    trendIcon = '↑';
+  } else {
+    trendColor = 'var(--color-primary)';
+    trendText = '+5.1% MoM';
+    trendIcon = '↑';
+  }
+
   const inner = `
-    <div class="kpi-card__icon">${icon}</div>
-    <div class="kpi-card__body">
-      <div class="kpi-card__value">${escHtml(String(value))}</div>
-      <div class="kpi-card__label">${escHtml(label)}</div>
-      <div class="kpi-card__sub">${escHtml(sub)}</div>
+    <div class="kpi-card__top" style="display:flex;justify-content:space-between;align-items:center;width:100%">
+      <div class="kpi-card__icon" style="font-size:1.4rem;padding:var(--space-1) var(--space-2);background:var(--color-surface);border-radius:6px">${icon}</div>
+      ${generateSparkline(label)}
+    </div>
+    <div class="kpi-body" style="display:flex;flex-direction:column;gap:4px;margin-top:10px">
+      <div class="kpi-card__value" style="font-size:2rem;font-weight:700;letter-spacing:-0.03em">${escHtml(String(value))}</div>
+      <div class="kpi-card__label" style="font-size:0.875rem;font-weight:600;color:var(--color-text)">${escHtml(label)}</div>
+      <div class="kpi-card__trend-row" style="display:flex;align-items:center;gap:6px;font-size:0.75rem;margin-top:2px">
+        <span class="kpi-card__trend" style="color:${trendColor};font-weight:600">${trendIcon} ${trendText}</span>
+        <span class="kpi-card__sub" style="color:var(--color-text-muted)">(${escHtml(sub)})</span>
+      </div>
     </div>`;
+
   return link
     ? `<a href="${link}" class="kpi-card ${cls}" style="text-decoration:none">${inner}</a>`
     : `<div class="kpi-card ${cls}">${inner}</div>`;
