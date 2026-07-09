@@ -1,8 +1,8 @@
 // ============================================================
 // app.js — SPA Router & App Bootstrap
 // ============================================================
-import { restoreSession, loginWithPassword, isLoggedIn, getCurrentUser, logout, changePassword } from './auth.js';
-import { initSidebar, setActiveRoute, NAV_ITEMS } from './components/sidebar.js';
+import { restoreSession, loginWithPassword, isLoggedIn, getCurrentUser } from './auth.js';
+import { initSidebar, setActiveRoute } from './components/sidebar.js';
 import { initToasts, toast } from './components/toast.js';
 import { loadDimCache } from './supabase-api.js';
 
@@ -37,7 +37,7 @@ const ROUTES = {
   'reports/sales':               () => import('./modules/reports/reports.js').then(m => m.renderSalesReport),
   'reports/lifecycle':           () => import('./modules/reports/reports.js').then(m => m.renderLifecycleReport),
   'reports/ingredient-usage':    () => import('./modules/reports/reports.js').then(m => m.renderIngredientUsage),
-  'reports/bi':                  () => import('./modules/reports/bi.js').then(m => m.renderBIDashboard),
+  'reports/bi':                  () => import('./modules/reports/bi.js').then(m => m.renderBI),
   'settings/users':              () => import('./modules/settings/users.js').then(m => m.renderUsers),
   'settings/sheets-config':      () => import('./modules/settings/sheets-config.js').then(m => m.renderSheetsConfig),
 };
@@ -182,10 +182,9 @@ async function bootstrap() {
   if (user) {
     hideLogin();
     initSidebar(navigate);
-    initPremiumTopbar();
-    initCommandPalette();
 
     // Start dim cache in background — don't block the first render.
+    // Each page fetches its own data; the cache just speeds up subsequent loads.
     loadDimCache().catch(e => console.warn('Dim cache preload failed:', e.message));
 
     await renderRoute(window.location.hash || '#dashboard');
@@ -196,253 +195,10 @@ async function bootstrap() {
 
   // Hash-based routing
   window.addEventListener('hashchange', () => {
-    if (isLoggedIn()) {
-      renderRoute(window.location.hash);
-      syncBreadcrumb();
-    }
+    if (isLoggedIn()) renderRoute(window.location.hash);
   });
 }
 
 bootstrap();
-
-// ─── Visual Shell Interactive Features ────────────────────────
-
-let activeDropdown = null;
-
-function initPremiumTopbar() {
-  const user = getCurrentUser();
-  if (!user) return;
-
-  // Restore dark mode theme button indicator
-  const isDark = document.documentElement.classList.contains('dark-mode');
-  const themeBtn = document.getElementById('topbar-theme-toggle');
-  if (themeBtn) themeBtn.textContent = isDark ? '☀️' : '🌙';
-
-  // Set avatar initials & profile info
-  const initials = user.full_name ? user.full_name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : '?';
-  const avatarEl = document.getElementById('topbar-user-avatar');
-  if (avatarEl) avatarEl.textContent = initials;
-
-  const profileHeader = document.getElementById('profile-header-user');
-  if (profileHeader) {
-    profileHeader.innerHTML = `
-      <div style="font-weight:600;color:var(--color-text)">${escHtml(user.full_name)}</div>
-      <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:400">${escHtml(user.role)}</div>
-    `;
-  }
-
-  // Bind dropdown toggle helper
-  const setupDropdown = (triggerId, menuId) => {
-    const trigger = document.getElementById(triggerId);
-    const menu = document.getElementById(menuId);
-    if (!trigger || !menu) return;
-
-    trigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const open = menu.classList.contains('dropdown-menu--open');
-      closeAllDropdowns();
-      if (!open) {
-        menu.classList.add('dropdown-menu--open');
-        activeDropdown = menu;
-      }
-    });
-  };
-
-  setupDropdown('btn-quick-action', 'quick-action-menu');
-  setupDropdown('topbar-notification-btn', 'notifications-menu');
-  setupDropdown('topbar-profile-btn', 'profile-menu');
-
-  // Document click to close all dropdowns
-  document.addEventListener('click', () => {
-    closeAllDropdowns();
-  });
-
-  // Theme Switcher
-  themeBtn?.addEventListener('click', () => {
-    const isDark = document.documentElement.classList.toggle('dark-mode');
-    localStorage.setItem('fm_bi_dark', isDark);
-    themeBtn.textContent = isDark ? '☀️' : '🌙';
-    toast.success(`${isDark ? 'Dark' : 'Light'} Mode enabled.`);
-  });
-
-  // Profile Change Password
-  document.getElementById('profile-chgpwd')?.addEventListener('click', () => {
-    // Dispatch a click to the sidebar password button so we reuse its modal logic
-    document.getElementById('sidebar-chgpwd')?.click();
-  });
-
-  // Profile Logout
-  document.getElementById('profile-logout')?.addEventListener('click', () => {
-    logout();
-    window.location.reload();
-  });
-
-  // Pull mock notifications / alerts to notification badge
-  setTimeout(() => {
-    const badge = document.getElementById('fm-notification-badge');
-    const body = document.getElementById('notifications-body');
-    if (!badge || !body) return;
-
-    // Check low stock count or pending corrections in Supabase or display standard system notifications
-    badge.textContent = '2';
-    badge.style.display = 'inline-flex';
-    body.innerHTML = `
-      <div class="notification-item">
-        <div class="notification-title">🚨 Low Stock Alert</div>
-        <div class="notification-desc">Some recipe ingredients are below minimum godown threshold.</div>
-      </div>
-      <div class="notification-item">
-        <div class="notification-title">✏️ Pending Correction</div>
-        <div class="notification-desc">New correction request is pending operator review.</div>
-      </div>
-    `;
-  }, 1500);
-
-  syncBreadcrumb();
-}
-
-function closeAllDropdowns() {
-  document.querySelectorAll('.dropdown-menu').forEach(m => {
-    m.classList.remove('dropdown-menu--open');
-  });
-  activeDropdown = null;
-}
-
-// Update breadcrumb visually to show nested module hierarchy
-function syncBreadcrumb() {
-  const hash = (window.location.hash || '#dashboard').replace(/^#/, '').split('?')[0];
-  const breadcrumb = document.getElementById('fm-breadcrumb');
-  if (!breadcrumb) return;
-
-  let pathName = 'Dashboard';
-  for (const item of NAV_ITEMS) {
-    if (item.route === hash) {
-      pathName = item.label;
-      break;
-    }
-    if (item.children) {
-      const match = item.children.find(c => c.route === hash);
-      if (match) {
-        pathName = `${item.label} <span class="topbar__divider">/</span> ${match.label}`;
-        break;
-      }
-    }
-  }
-  breadcrumb.innerHTML = pathName;
-}
-
-// ─── Global Command Palette ───────────────────────────────────
-
-function initCommandPalette() {
-  const trigger = document.getElementById('fm-search-trigger');
-  const palette = document.getElementById('fm-cmd-palette');
-  const searchInput = document.getElementById('fm-cmd-search');
-  const resultsContainer = document.getElementById('fm-cmd-results');
-  const closeBtn = document.getElementById('fm-cmd-close-kbd');
-
-  if (!palette || !searchInput || !resultsContainer) return;
-
-  // Flatten the NAV_ITEMS structure for quick searching
-  const searchableLinks = [];
-  NAV_ITEMS.forEach(item => {
-    if (item.children) {
-      item.children.forEach(c => {
-        searchableLinks.push({
-          label: `${item.label} → ${c.label}`,
-          route: c.route,
-          icon: c.icon
-        });
-      });
-    } else {
-      searchableLinks.push({
-        label: item.label,
-        route: item.route,
-        icon: item.icon
-      });
-    }
-  });
-
-  // Render search results based on input matching
-  const renderResults = () => {
-    const q = searchInput.value.toLowerCase().trim();
-    const matches = searchableLinks.filter(l => l.label.toLowerCase().includes(q));
-
-    if (matches.length === 0) {
-      resultsContainer.innerHTML = `<div class="cmd-palette__empty">No commands or pages found matching "${escHtml(searchInput.value)}"</div>`;
-      return;
-    }
-
-    resultsContainer.innerHTML = matches.map((m, idx) => `
-      <div class="cmd-palette__item ${idx === 0 ? 'cmd-palette__item--active' : ''}" data-route="${m.route}">
-        <span class="cmd-palette__item-icon">${m.icon}</span>
-        <span class="cmd-palette__item-label">${escHtml(m.label)}</span>
-        <span class="cmd-palette__item-shortcut">Jump ↵</span>
-      </div>
-    `).join('');
-  };
-
-  // Open/Close functions
-  const openPalette = () => {
-    palette.showModal();
-    searchInput.value = '';
-    renderResults();
-    setTimeout(() => searchInput.focus(), 50);
-  };
-
-  const closePalette = () => {
-    palette.close();
-  };
-
-  trigger?.addEventListener('click', openPalette);
-  closeBtn?.addEventListener('click', closePalette);
-
-  // Trigger search on Cmd+K / Ctrl+K
-  document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
-      openPalette();
-    }
-  });
-
-  // Handle keyboard navigation inside search results
-  searchInput.addEventListener('keydown', (e) => {
-    const items = resultsContainer.querySelectorAll('.cmd-palette__item');
-    if (items.length === 0) return;
-
-    let activeIdx = Array.from(items).findIndex(item => item.classList.contains('cmd-palette__item--active'));
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      items[activeIdx]?.classList.remove('cmd-palette__item--active');
-      activeIdx = (activeIdx + 1) % items.length;
-      items[activeIdx]?.classList.add('cmd-palette__item--active');
-      items[activeIdx]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      items[activeIdx]?.classList.remove('cmd-palette__item--active');
-      activeIdx = (activeIdx - 1 + items.length) % items.length;
-      items[activeIdx]?.classList.add('cmd-palette__item--active');
-      items[activeIdx]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const activeItem = items[activeIdx];
-      if (activeItem) {
-        navigate(activeItem.dataset.route);
-        closePalette();
-      }
-    }
-  });
-
-  // Live filter input event listener
-  searchInput.addEventListener('input', renderResults);
-
-  // Direct click handling
-  resultsContainer.addEventListener('click', (e) => {
-    const item = e.target.closest('.cmd-palette__item');
-    if (!item) return;
-    navigate(item.dataset.route);
-    closePalette();
-  });
-}
 
 function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
