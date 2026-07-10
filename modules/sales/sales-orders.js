@@ -300,7 +300,7 @@ async function openSalesOrderForm(data, companies, products, units, onSave) {
       return;
     }
 
-    const btn = e.target.querySelector('[type=submit]');
+    const btn = dialog.querySelector('[type=submit]');
     btn.disabled = true;
     btn.textContent = 'Saving…';
 
