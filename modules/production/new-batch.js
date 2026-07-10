@@ -3,7 +3,7 @@
 // Desktop: form-grid + ingredient table
 // Mobile:  stacked form fields + ingredient cards
 // ============================================================
-import { sheetsAppend, generateId, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly, updateFullRow } from '../../supabase-api.js';
+import { sheetsAppend, generateId, generateIds, sheetsBatchRead, parseSheetRows, updateInventoryBalance, activeOnly, updateFullRow } from '../../supabase-api.js';
 import { SHEETS, BATCH_STATUS } from '../../config.js';
 import { toast } from '../../components/toast.js';
 import { hasPermission, getCurrentUser } from '../../auth.js';
@@ -616,22 +616,28 @@ export async function renderNewBatch(container) {
         }
       }
 
-      for (const row of ingRows) {
+      const outIds = await generateIds(SHEETS.INVENTORY_OUT, ingRows.length);
+      const outRows = [];
+      for (let i = 0; i < ingRows.length; i++) {
+        const row = ingRows[i];
         await updateInventoryBalance(row.ingId, 0, row.qty);
-        const outId = await generateId(SHEETS.INVENTORY_OUT);
-        await sheetsAppend(SHEETS.INVENTORY_OUT, [[
-          outId, data.batch_date, row.ingId, batchId,
+        outRows.push([
+          outIds[i], data.batch_date, row.ingId, batchId,
           row.qty, row.unitId, 'Production Consumption',
           getCurrentUser()?.user_id, now, row.lotNo, row.whId
-        ]]);
+        ]);
+      }
+      if (outRows.length > 0) {
+        await sheetsAppend(SHEETS.INVENTORY_OUT, outRows);
       }
 
       const activeProcesses = allProcesses.filter(p =>
         !p.product_id || p.product_id === data.product_id);
       const logRows = [];
+      const logIds = await generateIds(SHEETS.PROCESS_LOG, activeProcesses.length);
       for (let i = 0; i < activeProcesses.length; i++) {
         const proc = activeProcesses[i];
-        const logId = await generateId(SHEETS.PROCESS_LOG);
+        const logId = logIds[i];
         logRows.push([
           logId, batchId, proc.process_id, proc.process_name,
           i === 0 ? 'Active' : 'Locked',

@@ -233,6 +233,30 @@ export async function generateId(sheetName) {
   }
 }
 
+export async function generateIds(sheetName, count) {
+  const prefix = ID_PREFIXES[sheetName] || 'ID';
+  const pkCol  = COLUMNS[sheetName]?.[0] || 'id';
+  let startNum = 1;
+  try {
+    const { data } = await supabase
+      .from(sheetName)
+      .select(pkCol)
+      .like(pkCol, `${prefix}-%`)
+      .order(pkCol, { ascending: false })
+      .limit(1);
+    if (data && data.length > 0) {
+      startNum = (parseInt(data[0][pkCol].split('-').pop()) || 0) + 1;
+    }
+  } catch {}
+
+  const ids = [];
+  for (let i = 0; i < count; i++) {
+    ids.push(`${prefix}-${String(startNum + i).padStart(3, '0')}`);
+  }
+  return ids;
+}
+
+
 export async function generateInvoiceNo() {
   const year = new Date().getFullYear();
   try {

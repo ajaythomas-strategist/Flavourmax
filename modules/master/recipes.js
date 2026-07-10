@@ -2,7 +2,7 @@
 // modules/master/recipes.js — Company-Specific Recipe Management
 // Configure ingredient lists per company+product combination
 // ============================================================
-import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, clearDimCache, activeOnly, sheetsBatchRead, parseSheetRows } from '../../supabase-api.js';
+import { readAllRows, sheetsAppend, findRowById, updateFullRow, generateId, generateIds, clearDimCache, activeOnly, sheetsBatchRead, parseSheetRows } from '../../supabase-api.js';
 import { SHEETS } from '../../config.js';
 import { formModal, confirm, contentModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
@@ -98,7 +98,7 @@ export async function renderRecipes(container) {
 
   container.querySelector('#copy-recipe-btn')?.addEventListener('click', () => {
     if (!currentCompanyId || !currentProductId) { toast.info('Load a recipe first.'); return; }
-    copyRecipeFrom(currentCompanyId, currentProductId, companies, products, ingredients, units);
+    copyRecipeFrom(currentCompanyId, currentProductId, companies, products, ingredients, units, () => loadRecipe(currentCompanyId, currentProductId));
   });
 
   async function loadRecipe(companyId, productId) {
@@ -205,7 +205,7 @@ async function editIngredientRow(rec, ingredients, units, onSave) {
   } catch (err) { toast.error(err.message); }
 }
 
-async function copyRecipeFrom(toCompanyId, productId, companies, products, ingredients, units) {
+async function copyRecipeFrom(toCompanyId, productId, companies, products, ingredients, units, onSave) {
   const result = await formModal({
     title: 'Copy Recipe From Another Company',
     fields: [
@@ -220,12 +220,15 @@ async function copyRecipeFrom(toCompanyId, productId, companies, products, ingre
     const sourceRecipes = allRecipes.filter(r => r.company_id === result.from_company_id && r.product_id === productId && r.is_active !== 'FALSE' && r.is_active !== false);
     if (sourceRecipes.length === 0) { toast.warning('No recipe found for selected company+product.'); return; }
     const now = new Date().toISOString();
-    for (const rec of sourceRecipes) {
-      const newId = await generateId(SHEETS.RECIPES);
-      await sheetsAppend(SHEETS.RECIPES, [[newId, toCompanyId, productId, rec.ingredient_id, rec.quantity, rec.unit_id, rec.notes, 'TRUE', now, now]]);
-    }
+    const newIds = await generateIds(SHEETS.RECIPES, sourceRecipes.length);
+    const rowsToAppend = sourceRecipes.map((rec, idx) => [
+      newIds[idx], toCompanyId, productId, rec.ingredient_id, rec.quantity,
+      rec.unit_id, rec.notes, 'TRUE', now, now
+    ]);
+    await sheetsAppend(SHEETS.RECIPES, rowsToAppend);
     toast.success(`Copied ${sourceRecipes.length} ingredients.`);
     clearDimCache();
+    if (onSave) await onSave();
   } catch (err) { toast.error(err.message); }
 }
 
