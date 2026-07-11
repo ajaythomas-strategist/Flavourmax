@@ -579,8 +579,11 @@ export async function renderNewBatch(container) {
   }
 
   // ── Form Submit ───────────────────────────────────────────
+  let _submitting = false; // guard against double-click / double-submit
   container.querySelector('#new-batch-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (_submitting) return; // block any concurrent submission
+    _submitting = true;
     const data = Object.fromEntries(new FormData(e.target));
     const btn  = container.querySelector('#create-batch-btn');
     btn.disabled = true; btn.textContent = 'Creating…';
@@ -652,6 +655,7 @@ export async function renderNewBatch(container) {
     } catch (err) {
       toast.error(err.message);
       btn.disabled = false; btn.textContent = 'Create Batch & Start';
+      _submitting = false; // allow retry after error
     }
   });
 }

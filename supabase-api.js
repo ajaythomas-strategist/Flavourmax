@@ -215,45 +215,59 @@ export async function hardDelete(sheetName, id) {
 
 // ─── ID & Invoice Generation ──────────────────────────────────
 
+// Simple async lock so concurrent generateId / generateIds calls
+// don't race each other and produce the same ID.
+const _idLocks = {};
+async function _withIdLock(key, fn) {
+  while (_idLocks[key]) await _idLocks[key];
+  let resolve;
+  _idLocks[key] = new Promise(r => { resolve = r; });
+  try { return await fn(); } finally { delete _idLocks[key]; resolve(); }
+}
+
 export async function generateId(sheetName) {
-  const prefix = ID_PREFIXES[sheetName] || 'ID';
-  const pkCol  = COLUMNS[sheetName]?.[0] || 'id';
-  try {
-    const { data } = await supabase
-      .from(sheetName)
-      .select(pkCol)
-      .like(pkCol, `${prefix}-%`)
-      .order(pkCol, { ascending: false })
-      .limit(1);
-    if (!data || data.length === 0) return `${prefix}-001`;
-    const lastNum = parseInt(data[0][pkCol].split('-').pop()) || 0;
-    return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
-  } catch {
-    return `${prefix}-001`;
-  }
+  return _withIdLock(sheetName, async () => {
+    const prefix = ID_PREFIXES[sheetName] || 'ID';
+    const pkCol  = COLUMNS[sheetName]?.[0] || 'id';
+    try {
+      const { data } = await supabase
+        .from(sheetName)
+        .select(pkCol)
+        .like(pkCol, `${prefix}-%`)
+        .order(pkCol, { ascending: false })
+        .limit(1);
+      if (!data || data.length === 0) return `${prefix}-001`;
+      const lastNum = parseInt(data[0][pkCol].split('-').pop()) || 0;
+      return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
+    } catch {
+      return `${prefix}-001`;
+    }
+  });
 }
 
 export async function generateIds(sheetName, count) {
-  const prefix = ID_PREFIXES[sheetName] || 'ID';
-  const pkCol  = COLUMNS[sheetName]?.[0] || 'id';
-  let startNum = 1;
-  try {
-    const { data } = await supabase
-      .from(sheetName)
-      .select(pkCol)
-      .like(pkCol, `${prefix}-%`)
-      .order(pkCol, { ascending: false })
-      .limit(1);
-    if (data && data.length > 0) {
-      startNum = (parseInt(data[0][pkCol].split('-').pop()) || 0) + 1;
-    }
-  } catch {}
+  return _withIdLock(sheetName, async () => {
+    const prefix = ID_PREFIXES[sheetName] || 'ID';
+    const pkCol  = COLUMNS[sheetName]?.[0] || 'id';
+    let startNum = 1;
+    try {
+      const { data } = await supabase
+        .from(sheetName)
+        .select(pkCol)
+        .like(pkCol, `${prefix}-%`)
+        .order(pkCol, { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        startNum = (parseInt(data[0][pkCol].split('-').pop()) || 0) + 1;
+      }
+    } catch {}
 
-  const ids = [];
-  for (let i = 0; i < count; i++) {
-    ids.push(`${prefix}-${String(startNum + i).padStart(3, '0')}`);
-  }
-  return ids;
+    const ids = [];
+    for (let i = 0; i < count; i++) {
+      ids.push(`${prefix}-${String(startNum + i).padStart(3, '0')}`);
+    }
+    return ids;
+  });
 }
 
 
