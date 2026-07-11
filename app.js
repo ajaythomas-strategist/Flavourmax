@@ -100,54 +100,12 @@ async function renderRoute(hash) {
     if (gen !== _routeGen) return;
     const m = mainEl(); if (!m) return;
     m.innerHTML = '';
-    // Stamp a unique render token on the container for stale-render detection.
-    const renderToken = String(gen);
-    m.dataset.renderToken = renderToken;
+    // Stamp a render-generation token on the container.
+    // Individual render functions can read container.dataset.renderToken
+    // and compare it against their captured value to detect stale renders.
+    m.dataset.renderToken = String(gen);
 
-    // A no-op proxy: silently absorbs any method call, property set or read.
-    // Returned by guardedContainer's query methods when the render is stale.
-    const _noOp = (() => {
-      const handler = {
-        get:   () => _noOpFn,
-        set:   () => true,
-        apply: () => _noOpFn,
-      };
-      // needs to be a function so it can be used as a constructor or called
-      function _noOpFn() {}
-      return new Proxy(_noOpFn, handler);
-    })();
-
-    // Guarded container: query methods check the render token and return _noOp
-    // if a newer render has already taken ownership of the container.
-    // IMPORTANT: All other native DOM functions are bound to the REAL element
-    // (not the Proxy) to prevent "Illegal invocation" errors.
-    const guardedContainer = new Proxy(m, {
-      get(target, prop) {
-        const val = target[prop];
-        // Intercept the three query methods to add stale-render protection.
-        if (prop === 'querySelector' || prop === 'querySelectorAll' ||
-            prop === 'getElementById') {
-          return (...args) => {
-            if (m.dataset.renderToken !== renderToken) {
-              // Stale render — return a silent no-op so that
-              // container.querySelector('#btn')?.addEventListener(...) does nothing.
-              return _noOp;
-            }
-            return val.apply(target, args);
-          };
-        }
-        // For ALL other properties: if it's a function, bind it to the real
-        // DOM element so native methods aren't called with `this = Proxy`.
-        if (typeof val === 'function') return val.bind(target);
-        return val;
-      },
-      set(target, prop, value) {
-        target[prop] = value;
-        return true;
-      },
-    });
-
-    await renderFn(guardedContainer, params);
+    await renderFn(m, params);
 
   } catch (err) {
     clearTimeout(slowTimer); clearTimeout(stuckTimer);
