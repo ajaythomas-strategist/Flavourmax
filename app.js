@@ -119,21 +119,31 @@ async function renderRoute(hash) {
 
     // Guarded container: query methods check the render token and return _noOp
     // if a newer render has already taken ownership of the container.
+    // IMPORTANT: All other native DOM functions are bound to the REAL element
+    // (not the Proxy) to prevent "Illegal invocation" errors.
     const guardedContainer = new Proxy(m, {
-      get(target, prop, receiver) {
+      get(target, prop) {
+        const val = target[prop];
+        // Intercept the three query methods to add stale-render protection.
         if (prop === 'querySelector' || prop === 'querySelectorAll' ||
             prop === 'getElementById') {
           return (...args) => {
             if (m.dataset.renderToken !== renderToken) {
-              // This render is stale — return a silent no-op so that
-              // `container.querySelector('#btn')?.addEventListener(...)` does nothing.
+              // Stale render — return a silent no-op so that
+              // container.querySelector('#btn')?.addEventListener(...) does nothing.
               return _noOp;
             }
-            const el = target[prop].apply(target, args);
-            return el; // may still be null — callers should use ?.
+            return val.apply(target, args);
           };
         }
-        return Reflect.get(target, prop, receiver);
+        // For ALL other properties: if it's a function, bind it to the real
+        // DOM element so native methods aren't called with `this = Proxy`.
+        if (typeof val === 'function') return val.bind(target);
+        return val;
+      },
+      set(target, prop, value) {
+        target[prop] = value;
+        return true;
       },
     });
 
