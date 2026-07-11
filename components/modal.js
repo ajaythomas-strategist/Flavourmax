@@ -3,6 +3,10 @@
 // Uses native <dialog> element for accessible modals
 // ============================================================
 
+// Prevents two form modals from opening at the same time.
+// (Can happen when a page has stale duplicate event listeners.)
+let _formModalOpen = false;
+
 // ─── Alert Dialog ─────────────────────────────────────────────
 export function alert({ title = 'Info', message = '' } = {}) {
   return new Promise((resolve) => {
@@ -55,7 +59,14 @@ export function confirm({ title = 'Confirm', message = 'Are you sure?', confirmT
 
 // ─── Form Modal ────────────────────────────────────────────────
 export function formModal({ title = 'Form', fields = [], data = {}, submitText = 'Save', size = 'md' } = {}) {
+  // Guard: silently ignore if a form modal is already open
+  if (_formModalOpen) return Promise.resolve(null);
+  _formModalOpen = true;
+
   return new Promise((resolve) => {
+    // Use a unique ID per instance so form= attribute always targets the right form,
+    // even if duplicate modals were accidentally opened.
+    const formId = `fm-modal-form-${Date.now()}`;
     const dialog = createDialog(size);
     dialog.innerHTML = `
       <div class="fm-modal__header">
@@ -63,22 +74,24 @@ export function formModal({ title = 'Form', fields = [], data = {}, submitText =
         <button class="fm-modal__close" aria-label="Close">×</button>
       </div>
       <div class="fm-modal__body">
-        <form id="fm-modal-form" novalidate>
+        <form id="${formId}" novalidate>
           ${fields.map(f => renderField(f, data[f.name])).join('')}
         </form>
       </div>
       <div class="fm-modal__footer">
         <button class="btn btn--ghost" type="button" id="modal-cancel">Cancel</button>
-        <button class="btn btn--primary" type="submit" form="fm-modal-form">${escHtml(submitText)}</button>
+        <button class="btn btn--primary" type="submit" form="${formId}">${escHtml(submitText)}</button>
       </div>
     `;
     document.body.appendChild(dialog);
     dialog.showModal();
 
-    dialog.querySelector('.fm-modal__close')?.addEventListener('click', () => { dialog.close(); resolve(null); });
-    dialog.querySelector('#modal-cancel').addEventListener('click', () => { dialog.close(); resolve(null); });
+    const _close = (val) => { _formModalOpen = false; dialog.close(); resolve(val); };
 
-    dialog.querySelector('#fm-modal-form').addEventListener('submit', (e) => {
+    dialog.querySelector('.fm-modal__close')?.addEventListener('click', () => _close(null));
+    dialog.querySelector('#modal-cancel').addEventListener('click',         () => _close(null));
+
+    dialog.querySelector(`#${formId}`).addEventListener('submit', (e) => {
       e.preventDefault();
       const form = e.target;
       if (!validateForm(form, fields)) return;
@@ -88,12 +101,11 @@ export function formModal({ title = 'Form', fields = [], data = {}, submitText =
         if (!el) return;
         result[f.name] = f.type === 'checkbox' ? el.checked : el.value;
       });
-      dialog.close();
-      resolve(result);
+      _close(result);
     });
 
-    dialog.addEventListener('close', () => setTimeout(() => dialog.remove(), 300));
-    dialog.addEventListener('click', (e) => { if (e.target === dialog) { dialog.close(); resolve(null); } });
+    dialog.addEventListener('close', () => { _formModalOpen = false; setTimeout(() => dialog.remove(), 300); });
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) _close(null); });
   });
 }
 

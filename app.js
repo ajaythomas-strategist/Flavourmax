@@ -100,7 +100,45 @@ async function renderRoute(hash) {
     if (gen !== _routeGen) return;
     const m = mainEl(); if (!m) return;
     m.innerHTML = '';
-    await renderFn(m, params);
+    // Stamp a unique render token on the container for stale-render detection.
+    const renderToken = String(gen);
+    m.dataset.renderToken = renderToken;
+
+    // A no-op proxy: silently absorbs any method call, property set or read.
+    // Returned by guardedContainer's query methods when the render is stale.
+    const _noOp = (() => {
+      const handler = {
+        get:   () => _noOpFn,
+        set:   () => true,
+        apply: () => _noOpFn,
+      };
+      // needs to be a function so it can be used as a constructor or called
+      function _noOpFn() {}
+      return new Proxy(_noOpFn, handler);
+    })();
+
+    // Guarded container: query methods check the render token and return _noOp
+    // if a newer render has already taken ownership of the container.
+    const guardedContainer = new Proxy(m, {
+      get(target, prop, receiver) {
+        if (prop === 'querySelector' || prop === 'querySelectorAll' ||
+            prop === 'getElementById') {
+          return (...args) => {
+            if (m.dataset.renderToken !== renderToken) {
+              // This render is stale — return a silent no-op so that
+              // `container.querySelector('#btn')?.addEventListener(...)` does nothing.
+              return _noOp;
+            }
+            const el = target[prop].apply(target, args);
+            return el; // may still be null — callers should use ?.
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    await renderFn(guardedContainer, params);
+
   } catch (err) {
     clearTimeout(slowTimer); clearTimeout(stuckTimer);
     if (gen !== _routeGen) return; // stale error — new page already rendered

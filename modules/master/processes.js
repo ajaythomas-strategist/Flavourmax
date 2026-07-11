@@ -8,7 +8,14 @@ import { formModal, confirm, alert, contentModal } from '../../components/modal.
 import { toast } from '../../components/toast.js';
 import { hasPermission } from '../../auth.js';
 
+// Module-level AbortController — aborts stale listeners when renderProcesses is called again
+let _renderController = null;
+
 export async function renderProcesses(container) {
+  if (_renderController) _renderController.abort();
+  _renderController = new AbortController();
+  const { signal } = _renderController;
+
   const canEditProcess = hasPermission('master_edit');
   const canEditFields  = hasPermission('process_fields_edit');
 
@@ -63,17 +70,17 @@ export async function renderProcesses(container) {
 
   if (canEditProcess) {
     container.querySelector('#add-proc-btn')?.addEventListener('click', () =>
-      openProcessForm(null, refreshProcesses, products));
+      openProcessForm(null, refreshProcesses, products), { signal });
   }
   filterSelect.addEventListener('change', () => {
     closeFieldEditor();
     refreshProcesses();
-  });
+  }, { signal });
 
   // ── Wire field-editor buttons ONCE using onclick (no accumulation) ──
   let selectedProcess = null;
 
-  container.querySelector('#close-fields-btn')?.addEventListener('click', closeFieldEditor);
+  container.querySelector('#close-fields-btn')?.addEventListener('click', closeFieldEditor, { signal });
 
   function closeFieldEditor() {
     const card = container.querySelector('#field-editor-card');
