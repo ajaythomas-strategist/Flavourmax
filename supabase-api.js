@@ -226,47 +226,42 @@ async function _withIdLock(key, fn) {
 }
 
 export async function generateId(sheetName) {
-  return _withIdLock(sheetName, async () => {
-    const prefix = ID_PREFIXES[sheetName] || 'ID';
-    const pkCol  = COLUMNS[sheetName]?.[0] || 'id';
-    try {
-      const { data } = await supabase
-        .from(sheetName)
-        .select(pkCol)
-        .like(pkCol, `${prefix}-%`)
-        .order(pkCol, { ascending: false })
-        .limit(1);
-      if (!data || data.length === 0) return `${prefix}-001`;
-      const lastNum = parseInt(data[0][pkCol].split('-').pop()) || 0;
-      return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
-    } catch {
-      return `${prefix}-001`;
-    }
-  });
+  return (await generateIds(sheetName, 1))[0];
 }
 
 export async function generateIds(sheetName, count) {
   return _withIdLock(sheetName, async () => {
     const prefix = ID_PREFIXES[sheetName] || 'ID';
     const pkCol  = COLUMNS[sheetName]?.[0] || 'id';
-    let startNum = 1;
     try {
+      // Fetch ALL matching IDs — not just the lexicographic max — so we can:
+      // 1. Compute the true NUMERIC max (avoids lexicographic ordering bugs)
+      // 2. Skip any phantom IDs left by previous failed inserts
       const { data } = await supabase
         .from(sheetName)
         .select(pkCol)
-        .like(pkCol, `${prefix}-%`)
-        .order(pkCol, { ascending: false })
-        .limit(1);
-      if (data && data.length > 0) {
-        startNum = (parseInt(data[0][pkCol].split('-').pop()) || 0) + 1;
-      }
-    } catch {}
+        .like(pkCol, `${prefix}-%`);
 
-    const ids = [];
-    for (let i = 0; i < count; i++) {
-      ids.push(`${prefix}-${String(startNum + i).padStart(3, '0')}`);
+      const usedSet = new Set((data || []).map(r => r[pkCol]));
+      const maxNum  = (data || []).reduce((max, r) => {
+        const n = parseInt(String(r[pkCol] ?? '').split('-').pop()) || 0;
+        return n > max ? n : max;
+      }, 0);
+
+      const ids = [];
+      let next = maxNum + 1;
+      while (ids.length < count) {
+        const candidate = `${prefix}-${String(next).padStart(3, '0')}`;
+        if (!usedSet.has(candidate)) ids.push(candidate);
+        next++;
+      }
+      return ids;
+    } catch {
+      // Fallback: sequential from 001
+      return Array.from({ length: count }, (_, i) =>
+        `${prefix}-${String(i + 1).padStart(3, '0')}`
+      );
     }
-    return ids;
   });
 }
 
