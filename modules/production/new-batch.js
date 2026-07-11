@@ -11,7 +11,16 @@ import { navigate } from '../../app.js';
 
 const isMobile = () => window.innerWidth <= 768;
 
+// Module-level guards — survive across multiple renderNewBatch calls
+let _renderController = null; // AbortController: cancels stale listeners on re-render
+let _submitting = false;       // prevents concurrent form submissions
+
 export async function renderNewBatch(container) {
+  // Cancel any previous render's event listeners before setting up new ones
+  if (_renderController) _renderController.abort();
+  _renderController = new AbortController();
+  const { signal } = _renderController;
+  _submitting = false; // reset on each fresh render
   if (!hasPermission('production_edit')) {
     container.innerHTML = '<div class="page-header"><h1 class="page-title">Access Denied</h1></div>';
     return;
@@ -170,8 +179,8 @@ export async function renderNewBatch(container) {
     });
   }
 
-  companySelect.addEventListener('change', filterSalesOrders);
-  productSelect.addEventListener('change', filterSalesOrders);
+  companySelect.addEventListener('change', filterSalesOrders, { signal });
+  productSelect.addEventListener('change', filterSalesOrders, { signal });
 
   salesOrderSelect?.addEventListener('change', () => {
     const opt = salesOrderSelect.selectedOptions[0];
@@ -181,7 +190,7 @@ export async function renderNewBatch(container) {
       // trigger input event so ingredient quantities rescale!
       qtyInput.dispatchEvent(new Event('input'));
     }
-  });
+  }, { signal });
 
   // ── Compute available lots logic ──────────────────────────
   function getAvailableLotsForIng(ingId) {
@@ -536,20 +545,20 @@ export async function renderNewBatch(container) {
     }
   }
 
-  productSelect.addEventListener('change', refreshIngredientSection);
-  companySelect.addEventListener('change', refreshIngredientSection);
+  productSelect.addEventListener('change', refreshIngredientSection, { signal });
+  companySelect.addEventListener('change', refreshIngredientSection, { signal });
   // Re-scale ingredient quantities when planned qty changes
   qtyInput?.addEventListener('input', () => {
     const section = container.querySelector('#ingredient-section');
     if (section && section.style.display !== 'none') refreshIngredientSection();
-  });
+  }, { signal });
 
   container.querySelector('#add-ing-row')?.addEventListener('click', () => {
     const section = container.querySelector('#ingredient-section');
     if (section) section.style.display = '';
     initIngredientLayout();
     addIngRow();
-  });
+  }, { signal });
 
   // ── Collect ingredient data (works for both layouts) ──────
   function collectIngredients() {
@@ -579,7 +588,7 @@ export async function renderNewBatch(container) {
   }
 
   // ── Form Submit ───────────────────────────────────────────
-  let _submitting = false; // guard against double-click / double-submit
+  // _submitting is module-level — shared across all renders of this page
   container.querySelector('#new-batch-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (_submitting) return; // block any concurrent submission
@@ -657,7 +666,7 @@ export async function renderNewBatch(container) {
       btn.disabled = false; btn.textContent = 'Create Batch & Start';
       _submitting = false; // allow retry after error
     }
-  });
+  }, { signal }); // signal ensures this listener is removed if renderNewBatch re-runs
 }
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
