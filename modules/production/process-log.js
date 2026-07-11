@@ -11,8 +11,14 @@ import { navigate } from '../../app.js';
 import { raiseCorrection } from '../corrections/corrections-inbox.js';
 
 let _autoSaveTimer = null;
+let _renderController = null;  // AbortController for stale-render protection
 
 export async function renderProcessLog(container, params = {}) {
+  // Abort any stale previous render's listeners
+  if (_renderController) _renderController.abort();
+  _renderController = new AbortController();
+  const { signal } = _renderController;
+
   const batchId = params.batch || new URLSearchParams(window.location.hash.split('?')[1] || '').get('batch');
 
   // Clear any existing autosave timer
@@ -88,7 +94,11 @@ export async function renderProcessLog(container, params = {}) {
     </div>
   `;
 
-  const stepper = document.getElementById('process-stepper');
+  // Use container.querySelector so we're scoped to the current render, not the global document.
+  // Clear first — if a stale render also runs, clearing before appending ensures
+  // only ONE set of steps ends up in the DOM.
+  const stepper = container.querySelector('#process-stepper');
+  if (stepper) stepper.innerHTML = '';
 
   // Unit options for output dropdown
   const unitOptionsHtml = units.map(u =>
@@ -290,7 +300,7 @@ export async function renderProcessLog(container, params = {}) {
     return log && log.step_status === 'Completed';
   });
 
-  const batchActions = document.getElementById('batch-actions');
+  const batchActions = container.querySelector('#batch-actions');
   if (batch.status === BATCH_STATUS.IN_PROGRESS && canEdit) {
     batchActions.style.display = '';
     batchActions.innerHTML = `
@@ -303,7 +313,7 @@ export async function renderProcessLog(container, params = {}) {
         <button class="btn btn--danger btn--sm" id="cancel-batch-btn">Cancel Batch</button>
       </div>`;
 
-    document.getElementById('complete-batch-btn')?.addEventListener('click', async () => {
+    container.querySelector('#complete-batch-btn')?.addEventListener('click', async () => {
       const res = await formModal({
         title: 'Complete Batch',
         fields: [{ name: 'actual_qty', label: 'Actual Output Qty', type: 'number', required: true }],
@@ -323,7 +333,7 @@ export async function renderProcessLog(container, params = {}) {
       } catch (err) { toast.error(err.message); }
     });
 
-    document.getElementById('cancel-batch-btn')?.addEventListener('click', async () => {
+    container.querySelector('#cancel-batch-btn')?.addEventListener('click', async () => {
       const res = await formModal({
         title: 'Cancel Batch',
         fields: [{ name: 'reason', label: 'Cancellation Reason', type: 'textarea', required: true }],
@@ -359,7 +369,7 @@ export async function renderProcessLog(container, params = {}) {
 
   // ── Form submit / draft handlers ──────────────────────────
   if (canEdit) {
-    document.querySelectorAll('.process-form').forEach(form => {
+    container.querySelectorAll('.process-form').forEach(form => {
       const procId = form.dataset.procId;
       const fields = allFields.filter(f => f.process_id === procId);
 
